@@ -1,0 +1,67 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "rooms": {
+      "$room": {
+        ".read": "auth != null",
+        ".write": "auth != null && ((!data.exists() && newData.child('teacherUid').val() === auth.uid) || (data.exists() && data.child('teacherUid').val() === auth.uid) || (data.child('createdAt').val() < now - 43200000 && newData.child('teacherUid').val() === auth.uid))",
+        ".validate": "$room.matches(/^[0-9]{4}$/)",
+
+        "seats": {
+          "$g": {
+            ".write": "auth != null && root.child('rooms').child($room).child('teacherUid').exists() && ((newData.val() === auth.uid && (!data.exists() || data.val() === auth.uid)) || (!newData.exists() && data.val() === auth.uid))",
+            ".validate": "$g.matches(/^[1-6]$/) && newData.isString()"
+          }
+        },
+
+        "groups": {
+          "$g": {
+            "online": {
+              ".write": "auth != null && root.child('rooms').child($room).child('seats').child($g).val() === auth.uid",
+              ".validate": "newData.isBoolean()"
+            },
+            "paid": {
+              "b0": {
+                ".write": "auth != null && root.child('rooms').child($room).child('seats').child($g).val() === auth.uid && root.child('rooms').child($room).child('state').child('shown').val() >= 1",
+                ".validate": "newData.val() === true"
+              },
+              "b1": {
+                ".write": "auth != null && root.child('rooms').child($room).child('seats').child($g).val() === auth.uid && root.child('rooms').child($room).child('state').child('shown').val() >= 2",
+                ".validate": "newData.val() === true"
+              },
+              "b2": {
+                ".write": "auth != null && root.child('rooms').child($room).child('seats').child($g).val() === auth.uid && root.child('rooms').child($room).child('state').child('shown').val() >= 3",
+                ".validate": "newData.val() === true"
+              },
+              "b3": {
+                ".write": "auth != null && root.child('rooms').child($room).child('seats').child($g).val() === auth.uid && root.child('rooms').child($room).child('state').child('shown').val() >= 4",
+                ".validate": "newData.val() === true"
+              },
+              "b4": {
+                ".write": "auth != null && root.child('rooms').child($room).child('seats').child($g).val() === auth.uid && root.child('rooms').child($room).child('state').child('shown').val() >= 5",
+                ".validate": "newData.val() === true"
+              },
+              "fate": {
+                ".write": "auth != null && root.child('rooms').child($room).child('seats').child($g).val() === auth.uid && root.child('rooms').child($room).child('state').child('fate').val() === true",
+                ".validate": "newData.val() === true"
+              }
+            },
+            "mood": {
+              ".write": "auth != null && root.child('rooms').child($room).child('seats').child($g).val() === auth.uid && root.child('rooms').child($room).child('state').child('moodOpen').val() === true",
+              "k": {
+                ".validate": "newData.isString() && newData.val().matches(/^(angry|sad|confused|unfair|custom)$/)"
+              },
+              "t": {
+                ".validate": "newData.isString() && newData.val().length <= 40"
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

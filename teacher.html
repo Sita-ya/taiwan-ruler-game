@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>教師控制台｜台灣的尺：一個月生活挑戰</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="teacher">
+
+<!-- 登入 / 選模式 -->
+<div id="gate" class="gate">
+  <div class="gate-card" id="gateCard"></div>
+</div>
+
+<!-- 主畫面 -->
+<div id="app" hidden>
+  <header id="topbar">
+    <div class="tb-left">
+      <div class="tb-title">🎓 台灣的尺：教師控制台</div>
+      <div class="tb-room" id="tbRoom"></div>
+    </div>
+    <div class="tb-mid">
+      <button class="btn tab on" data-act="mode" data-arg="control">🎛 控制模式</button>
+      <button class="btn tab" data-act="mode" data-arg="proj">📽 投影模式</button>
+    </div>
+    <div class="tb-right">
+      <span id="tbConn" class="conn"></span>
+      <button class="btn pause-btn" id="pauseBtn" data-act="pause">⏸ 全班暫停</button>
+    </div>
+  </header>
+
+  <main id="control">
+    <aside class="col-steps">
+      <h3>步驟（點一下跳過去）</h3>
+      <div id="stepList"></div>
+      <button class="btn line2-btn" id="line2Btn" data-act="line2">🟠 第二條線（第四節課用）</button>
+    </aside>
+
+    <section class="col-main">
+      <div class="pv-wrap">
+        <div class="pv-label">給全班看的畫面（預覽）</div>
+        <div class="fitbox" id="pvBox"></div>
+      </div>
+      <div class="nav-row">
+        <button class="btn nav prev" id="prevBtn" data-act="prev">◀ 上一步</button>
+        <div class="nav-mid" id="navMid"></div>
+        <button class="btn nav next" id="nextBtn" data-act="next">下一步 ▶</button>
+      </div>
+      <div class="nav-hint">投影模式快捷鍵：→ 或 空白鍵＝下一步　← ＝上一步　P ＝全班暫停　C ＝回控制模式</div>
+    </section>
+
+    <aside class="col-side">
+      <div class="panel" id="notesPanel"></div>
+      <div class="panel" id="groupsPanel"></div>
+      <div class="panel" id="settingsPanel"></div>
+    </aside>
+  </main>
+
+  <!-- 投影模式 -->
+  <div id="projFull" hidden>
+    <div class="fitbox full" id="fullBox"></div>
+    <button id="toCtl" class="to-ctl" data-act="mode" data-arg="control" title="回到控制模式（C）">🎛</button>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="config.js"></script>
+<script src="js/localdb.js"></script>
+<script src="js/qrcode.js"></script>
+<script src="js/app.js"></script>
+<script src="js/projection.js"></script>
+<script src="js/teacher.js"></script>
+</body>
+</html>
