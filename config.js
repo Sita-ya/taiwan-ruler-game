@@ -12,12 +12,11 @@ window.GAME_CONFIG = {
    * 把裡面的值貼到下面對應的引號中（詳細步驟請看 README.md 第二章）。
    * 全部留空 = 沒有連線，只能使用「單機投影模式」。 */
   firebase: {
-  apiKey: "AIzaSyCHUqgPagDpHW_llTwE_AQJV9kjfigSDCA"
-“AIzaSyCHUqgPagDpHW_llTwE_AQJV9kjfigSDCA",
+  apiKey: "AIzaSyCHUqgPagDpHW_llTwE_AQJV9kjfigSDCA",
   authDomain: "taiwan-ruler.firebaseapp.com",
   databaseURL: "https://taiwan-ruler-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "taiwan-ruler",
-  appId: "1:123456789:web:abcdef"
+  appId: "1:724406871649:web:c953bcb2fed4d3166b2c20"
 },
 
   /* 學生網址的前綴（選填）。
