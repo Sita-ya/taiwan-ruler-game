@@ -446,7 +446,9 @@ body.student input { -webkit-user-select: text; user-select: text; }
 .key:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
 .key.fn { background: var(--soft); }
 .key.small { font-size: 22px; }
-.key.ok { grid-column: span 2; background: var(--gold); }
+.key.ok { grid-column: span 3; background: var(--gold); }
+.bc-pay { font-size: 22px; font-weight: 800; color: #666; margin-top: 4px; }
+.calc-q b { font-size: 36px; color: var(--red); }
 .btn.pay { font-size: 34px; min-height: 76px; width: min(420px, 100%); background: var(--gold); margin-top: 8px; }
 .btn.pay.solo { min-height: 88px; font-size: 40px; }
 
