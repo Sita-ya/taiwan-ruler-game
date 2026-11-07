@@ -412,7 +412,7 @@
     var h = '<h3>⚙️ 設定</h3>' +
       '<label class="set">本局組數 <select id="setGroups"' + (locked ? ' disabled title="抽籤後不能改，請先「重新開始」"' : '') + '>' +
       [4, 5, 6].map(function (n) { return '<option value="' + n + '"' + (cfg.groups === n ? ' selected' : '') + '>' + n + ' 組</option>'; }).join('') + '</select></label>' +
-      '<label class="set"><input type="checkbox" id="setCalc"' + (cfg.calc ? ' checked' : '') + '> 計算模式（學生要先算出剩多少錢才能繳費）</label>' +
+      '<label class="set"><input type="checkbox" id="setCalc"' + (cfg.calc ? ' checked' : '') + '> 輸入模式（學生要先在鍵盤輸入「繳款金額」才能繳費）</label>' +
       '<label class="set"><input type="checkbox" id="setSound"' + (cfg.sound ? ' checked' : '') + '> 開啟音效</label>' +
       '<label class="set">補助方式 <select id="setSub"><option value="cover"' + (cfg.subMode === 'cover' ? ' selected' : '') + '>剛好補到 0（還清債務）</option>' +
       '<option value="fixed"' + (cfg.subMode === 'fixed' ? ' selected' : '') + '>固定金額</option></select></label>' +
