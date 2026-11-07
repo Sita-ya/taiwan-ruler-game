@@ -142,24 +142,21 @@
       var s = st.input;
       if (k === 'back') s = s.slice(0, -1);
       else if (k === 'clear') s = '';
-      else if (k === 'neg') s = s.charAt(0) === '-' ? s.slice(1) : '-' + s;
-      else if (k === '000') { if (s.replace('-', '').length && s.replace('-', '').length <= 4) s += '000'; }
-      else { if (s.replace('-', '').length < 7) s += k; }
-      var neg = s.charAt(0) === '-', dg = s.replace('-', '').replace(/^0+(?=\d)/, '');   // 去掉多餘的 0
-      s = (neg ? '-' : '') + dg;
-      st.input = s; st.msg = ''; renderGame(true);
+      else if (k === '000') { if (s.length && s.length <= 4) s += '000'; }
+      else { if (s.length < 7) s += k; }
+      st.input = s.replace(/^0+(?=\d)/, '');          // 去掉多餘的 0
+      st.msg = ''; renderGame(true);
     },
+    /* 學生輸入「帳單上要繳的金額」（不需要算負數）；餘額由下方自動扣除 */
     check: function () {
       var L = ledger(), o = L && L.pending[0], st = calcState(); if (!o || !st || st.solved) return;
       var n = parseInt(st.input, 10);
-      if (isNaN(n)) { st.msg = '請先輸入答案喔'; renderGame(true); return; }
-      var ans = L.balance - o.amount;
-      if (n === ans) { st.solved = true; st.msg = ''; TW.sound.play('ok'); }
+      if (isNaN(n)) { st.msg = '請先輸入金額喔'; renderGame(true); return; }
+      if (n === o.amount) { st.solved = true; st.msg = ''; TW.sound.play('ok'); }
       else {
         st.wrong++;
-        if (st.wrong >= 2) { st.solved = true; st.input = String(ans); st.reveal = true; st.msg = ''; }
-        else st.msg = '再算一次：' + TW.money(L.balance) + ' − ' + TW.fmt(o.amount) + ' ＝ ？';
-        st.input = st.wrong >= 2 ? st.input : '';
+        if (st.wrong >= 2) { st.solved = true; st.input = String(o.amount); st.reveal = true; st.msg = ''; }
+        else { st.msg = '再看一次帳單上的金額喔'; st.input = ''; }
       }
       renderGame(true);
     },
@@ -281,7 +278,7 @@
     h += (o.fate ? '<div class="bc-pic">' + TW.plainImg(C.fate.img, 'bc-img', C.fate.title) + '</div>' : '<div class="bc-icon">' + o.icon + '</div>') + '<div class="bc-cat">' + esc(o.cat) + '</div><div class="bc-name">' + esc(o.label) + '</div>' +
       (o.bill && o.bill.note ? '<div class="bc-note">' + esc(o.bill.note) + '</div>' : '') +
       (o.fate ? '<div class="bc-note">' + esc(C.fate.text) + '</div>' : '') +
-      '<div class="bc-amt">−' + TW.fmt(o.amount) + '<small>元</small></div>';
+      '<div class="bc-pay">繳款</div><div class="bc-amt">' + TW.fmt(o.amount) + '<small>元</small></div>';
     if (!L.pending.length) {
       h += '<div class="paid-ok">✔ 已繳費</div><div class="s-hint">等老師公布下一步</div></div>';
       return '<div class="pay-layout">' + h + '</div>';
@@ -290,12 +287,11 @@
     var ans = L.balance - o.amount, r = '';
     if (cfg.calc) {
       var st = calcState();
-      r += '<div class="calc"><div class="calc-q">繳完這筆，我們家還剩多少？</div>' +
-        '<div class="calc-show">' + (S.calc && st && st.reveal ? '<span class="reveal">' + TW.money(L.balance) + ' − ' + TW.fmt(o.amount) + ' ＝ ' + TW.money(ans) + '</span>' :
-          '<span class="calc-in ' + (st.input ? '' : 'ph') + '">' + (st.input ? fmtInput(st.input) : '？') + '</span>') + '</div>';
+      r += '<div class="calc"><div class="calc-q">請輸入要繳的金額：<b>' + TW.fmt(o.amount) + '</b> 元</div>' +
+        '<div class="calc-show"><span class="calc-in ' + (st.input ? '' : 'ph') + '">' + (st.input ? fmtInput(st.input) : '？') + '</span></div>';
       if (st.msg) r += '<div class="calc-msg">' + esc(st.msg) + '</div>';
       if (st.solved) {
-        r += '<div class="calc-ok">' + (st.reveal ? '看懂算式了嗎？' : '✔ 答對了！') + '</div>' +
+        r += '<div class="calc-ok">' + (st.reveal ? '就是這個金額，按繳費！' : '✔ 金額正確！') + '</div>' +
           '<button class="btn pay" data-act="pay"' + (S.paying ? ' disabled' : '') + '>💸 繳費</button>';
       } else {
         r += keypad();
@@ -313,9 +309,9 @@
   function keypad() {
     var k = function (a, t, cls) { return '<button class="key ' + (cls || '') + '" data-act="kp" data-arg="' + a + '">' + t + '</button>'; };
     return '<div class="keypad">' + k('7', '7') + k('8', '8') + k('9', '9') + k('back', '⌫', 'fn') +
-      k('4', '4') + k('5', '5') + k('6', '6') + k('neg', '−', 'fn') +
-      k('1', '1') + k('2', '2') + k('3', '3') + k('clear', '清除', 'fn small') +
-      k('0', '0') + k('000', '000') + '<button class="key ok" data-act="check">確定</button></div>';
+      k('4', '4') + k('5', '5') + k('6', '6') + k('clear', '清除', 'fn small') +
+      k('1', '1') + k('2', '2') + k('3', '3') + k('000', '000') +
+      k('0', '0') + '<button class="key ok" data-act="check">確定</button></div>';
   }
 
   function balanceView(L, hint) {
