@@ -429,7 +429,11 @@
     var want = S.screen === 'game' && S.room && S.room.state && S.room.state.fs === true;
     var show = want && TW.fs.supported() && !TW.fs.isOn();
     $('#fsOverlay').hidden = !show;
+    // iPad 不支援網頁全螢幕 → 顯示「加入主畫面」教學（按「知道了」後這次不再出現）
+    var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    $('#iosTip').hidden = !(want && isIOS && !TW.fs.supported() && !TW.fs.isOn() && !S.iosTipDone);
   }
+  $('#iosOk').addEventListener('click', function () { S.iosTipDone = true; updateFsOverlay(); });
   $('#fsGo').addEventListener('click', function () { TW.fs.enter(); setTimeout(updateFsOverlay, 300); });
   TW.fs.onChange(updateFsOverlay);
 
