@@ -1,0 +1,13 @@
+{
+  "name": "台灣的尺：一個月生活挑戰",
+  "short_name": "台灣的尺",
+  "start_url": "student.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#FFF8E7",
+  "theme_color": "#2B2D42",
+  "icons": [
+    { "src": "icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
