@@ -141,6 +141,9 @@ body.projector { overflow: hidden; background: var(--bg); }
 .fs-overlay { position: fixed; inset: 0; z-index: 9500; background: rgba(43,45,66,.92); display: flex; align-items: center; justify-content: center; }
 .fs-btn { font: inherit; font-size: 44px; font-weight: 900; color: var(--ink); background: var(--gold); border: 6px solid #fff; border-radius: 40px; padding: 40px 60px; cursor: pointer; box-shadow: 0 10px 0 rgba(0,0,0,.35); line-height: 1.4; touch-action: manipulation; }
 .fs-btn small { display: block; font-size: 24px; font-weight: 700; }
+.ios-card { background: #fff; border: 6px solid var(--gold); border-radius: 30px; padding: 24px 34px; width: min(760px, 92vw); }
+.ios-t { font-size: 30px; font-weight: 900; margin-bottom: 8px; }
+.ios-card ol { font-size: 26px; line-height: 1.6; padding-left: 1.4em; margin: 8px 0 14px; }
 
 /* 投影模式 */
 #projFull { position: fixed; inset: 0; z-index: 100; background: var(--bg); }

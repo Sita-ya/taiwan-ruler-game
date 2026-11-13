@@ -23,6 +23,19 @@
   <div id="fsOverlay" class="fs-overlay" hidden>
     <button class="fs-btn" id="fsGo">👆 點一下<br>進入全螢幕<small>老師請大家把畫面放大</small></button>
   </div>
+  <!-- iPad 不支援網頁全螢幕時：改教學生「加入主畫面」 -->
+  <div id="iosTip" class="fs-overlay" hidden>
+    <div class="ios-card">
+      <div class="ios-t">📱 這台 iPad 要從「主畫面」開啟，才不會有網址列</div>
+      <ol>
+        <li>點畫面上方的 <b>分享</b> 圖示（方框加向上箭頭 ⬆️）</li>
+        <li>往下找 <b>「加入主畫面」</b> → 右上角 <b>「新增」</b></li>
+        <li>回到 iPad 主畫面，點 <b>「台灣的尺」</b> 圖示打開</li>
+        <li>輸入老師投影幕上的 <b>房間代碼</b>，選回<b>同一個組別</b></li>
+      </ol>
+      <button class="btn big primary" id="iosOk">知道了</button>
+    </div>
+  </div>
   <div id="toast" class="toast" hidden></div>
 
 <script src="config.js"></script>
