@@ -203,6 +203,7 @@
     if (S.screen !== 'game' || !S.room) return;
     var inf = TW.info(S.room);
     $('#pause').hidden = !inf.paused;
+    updateFsOverlay();
     if (!force && !gate(sigOf())) return;
     if (force) gate(sigOf());
     var fresh = S.lastF !== null && S.lastF !== inf.f;
@@ -422,6 +423,15 @@
       })(el, (b.left + b.width / 2) - sx, (b.top + b.height / 2) - sy, i * 40);
     }
   }
+
+  /* ---- 老師按「平板全螢幕」：瀏覽器規定一定要學生自己點一下，所以蓋一層大按鈕 ---- */
+  function updateFsOverlay() {
+    var want = S.screen === 'game' && S.room && S.room.state && S.room.state.fs === true;
+    var show = want && TW.fs.supported() && !TW.fs.isOn();
+    $('#fsOverlay').hidden = !show;
+  }
+  $('#fsGo').addEventListener('click', function () { TW.fs.enter(); setTimeout(updateFsOverlay, 300); });
+  TW.fs.onChange(updateFsOverlay);
 
   /* ================= 事件 ================= */
   document.addEventListener('click', function (e) {
