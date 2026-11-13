@@ -4,6 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>台灣的尺：一個月生活挑戰</title>
+<!-- 「加入主畫面」後從主畫面打開，就不會有網址列（iPad 用這個方法） -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="台灣的尺">
+<meta name="theme-color" content="#2B2D42">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.png">
 <link rel="stylesheet" href="style.css">
 </head>
 <body class="student">
@@ -11,6 +19,9 @@
   <div id="root"></div>
   <div id="pause" class="pause-overlay" hidden>
     <div class="pause-in"><div class="pause-eyes">👀</div><div class="pause-t">眼睛看老師</div></div>
+  </div>
+  <div id="fsOverlay" class="fs-overlay" hidden>
+    <button class="fs-btn" id="fsGo">👆 點一下<br>進入全螢幕<small>老師請大家把畫面放大</small></button>
   </div>
   <div id="toast" class="toast" hidden></div>
 

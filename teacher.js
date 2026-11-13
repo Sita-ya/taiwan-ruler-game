@@ -196,6 +196,19 @@
       if (p) TW.sound.play('pause');
     },
     mode: function (a) { setMode(a); },
+    openProj: function () {
+      var url = 'projector.html?' + (S.kind === 'local' ? 'local=1' : 'room=' + S.code) +
+        (TW.isMock ? '&mock=1&uid=' + encodeURIComponent(TW.net.uid) : '');
+      var w = window.open(url, 'tw_projector', 'popup,width=1280,height=760');
+      if (!w) { toast('瀏覽器擋下了新視窗：請在網址列右邊允許「彈出式視窗」後再按一次。'); return; }
+      try { w.focus(); } catch (e) { /* ignore */ }
+      toast('已開啟投影視窗：把它拖到電子白板，再按視窗裡的「⛶ 全螢幕」。');
+    },
+    stuFs: function () {
+      var on = !(S.room.state && S.room.state.fs);
+      write({ 'state/fs': on, 'state/ts': TW.TS });
+      toast(on ? '學生平板會出現「點一下進入全螢幕」，請學生點一下。' : '已關閉平板全螢幕提示。');
+    },
     redraw: function () {
       if (!confirm('要重新抽籤嗎？\n各組的繳費與心情紀錄會一起清掉。')) return;
       var u = resetGroupsUpdates();
@@ -255,24 +268,8 @@
   /* ================= 畫面 ================= */
   var gates = { steps: TW.makeGate(), notes: TW.makeGate(), groups: TW.makeGate(), settings: TW.makeGate(), pv: TW.makeGate(), nav: TW.makeGate(), top: TW.makeGate() };
 
-  function baseUrl() {
-    if (C.siteBaseUrl) return C.siteBaseUrl.replace(/\/?$/, '/');
-    return location.href.replace(/[?#].*$/, '').replace(/[^\/]*$/, '');
-  }
-  function studentUrl() { return baseUrl() + 'student.html?room=' + S.code; }
-  var qrCache = {};
-  function qrSvg() {
-    var url = studentUrl();
-    if (qrCache[url]) return qrCache[url];
-    try {
-      var q = qrcode(0, 'M'); q.addData(url); q.make();
-      qrCache[url] = q.createSvgTag({ cellSize: 8, margin: 2, scalable: true });
-    } catch (e) { qrCache[url] = '<div class="qr-fail">QR code 產生失敗</div>'; }
-    return qrCache[url];
-  }
-  function env() {
-    return { kind: S.kind, code: S.code, baseUrl: S.kind === 'online' ? baseUrl() + 'student.html' : '', qr: S.kind === 'online' ? qrSvg() : '', mapZoom: S.mapZoom };
-  }
+  function studentUrl() { return TW.studentUrl(S.code); }
+  function env() { return TW.projEnv(S.kind, S.code, S.mapZoom); }
 
   function onRoom() {
     var inf = TW.info(S.room), cfg = TW.cfgOf(S.room);
@@ -299,6 +296,11 @@
     var pb = $('#pauseBtn');
     pb.textContent = inf.paused ? '▶ 解除暫停（學生畫面：👀 眼睛看老師）' : '⏸ 全班暫停';
     pb.classList.toggle('on', inf.paused);
+    var fb = $('#stuFsBtn'), fsOn = !!(room.state && room.state.fs);
+    fb.hidden = S.kind !== 'online';
+    fb.textContent = fsOn ? '📱 平板全螢幕 ✓' : '📱 平板全螢幕';
+    fb.title = fsOn ? '已開啟：學生平板會出現「點一下進入全螢幕」。再按一次關閉。' : '讓學生平板出現「點一下進入全螢幕」';
+    fb.classList.toggle('on', fsOn);
 
     // 投影舞台（預覽或全螢幕）
     var box = S.mode === 'proj' ? $('#fullBox') : $('#pvBox');
@@ -412,7 +414,7 @@
     var h = '<h3>⚙️ 設定</h3>' +
       '<label class="set">本局組數 <select id="setGroups"' + (locked ? ' disabled title="抽籤後不能改，請先「重新開始」"' : '') + '>' +
       [4, 5, 6].map(function (n) { return '<option value="' + n + '"' + (cfg.groups === n ? ' selected' : '') + '>' + n + ' 組</option>'; }).join('') + '</select></label>' +
-      '<label class="set"><input type="checkbox" id="setCalc"' + (cfg.calc ? ' checked' : '') + '> 計算模式（學生要先算出剩多少錢才能繳費）</label>' +
+      '<label class="set"><input type="checkbox" id="setCalc"' + (cfg.calc ? ' checked' : '') + '> 輸入模式（學生要先在鍵盤輸入「繳款金額」才能繳費）</label>' +
       '<label class="set"><input type="checkbox" id="setSound"' + (cfg.sound ? ' checked' : '') + '> 開啟音效</label>' +
       '<label class="set">補助方式 <select id="setSub"><option value="cover"' + (cfg.subMode === 'cover' ? ' selected' : '') + '>剛好補到 0（還清債務）</option>' +
       '<option value="fixed"' + (cfg.subMode === 'fixed' ? ' selected' : '') + '>固定金額</option></select></label>' +

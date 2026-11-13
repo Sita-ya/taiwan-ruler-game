@@ -277,7 +277,8 @@
    */
   TW.initNet = function (kind) {
     if (kind === 'local') {
-      TW.net = { db: new window.LocalDB({ persistKey: 'tw_local_db' }), uid: 'local', kind: 'local' };
+      // shared：同一台電腦的「投影視窗」也能即時同步
+      TW.net = { db: new window.LocalDB({ persistKey: 'tw_local_db', shared: true }), uid: 'local', kind: 'local' };
       return Promise.resolve(TW.net);
     }
     if (TW.isMock) {
@@ -318,6 +319,54 @@
   TW.friendlyError = function (e) {
     if (e && (e.code === 'PERMISSION_DENIED' || /PERMISSION_DENIED/.test(e.message || ''))) return '沒有權限（可能是安全規則還沒貼上，或這個動作現在不能做）。';
     return (e && e.message) || '發生錯誤';
+  };
+
+  /* ---------------- 學生網址、QR code、投影環境（老師控制台與投影視窗共用） ---------------- */
+  TW.baseUrl = function () {
+    if (C.siteBaseUrl) return C.siteBaseUrl.replace(/\/?$/, '/');
+    return location.href.replace(/[?#].*$/, '').replace(/[^\/]*$/, '');
+  };
+  TW.studentUrl = function (code) { return TW.baseUrl() + 'student.html?room=' + code; };
+  var qrCache = {};
+  TW.qrSvg = function (url) {
+    if (qrCache[url]) return qrCache[url];
+    try {
+      var q = window.qrcode(0, 'M'); q.addData(url); q.make();
+      qrCache[url] = q.createSvgTag({ cellSize: 8, margin: 2, scalable: true });
+    } catch (e) { qrCache[url] = '<div class="qr-fail">QR code 產生失敗</div>'; }
+    return qrCache[url];
+  };
+  TW.projEnv = function (kind, code, mapZoom) {
+    var on = kind === 'online';
+    return { kind: kind, code: code, baseUrl: on ? TW.baseUrl() + 'student.html' : '', qr: on ? TW.qrSvg(TW.studentUrl(code)) : '', mapZoom: mapZoom };
+  };
+
+  /* ---------------- 全螢幕（瀏覽器規定：一定要「在那台裝置上點一下」才能進入） ---------------- */
+  TW.fs = {
+    supported: function () { return !!(document.fullscreenEnabled || document.webkitFullscreenEnabled); },
+    isOn: function () {
+      if (document.fullscreenElement || document.webkitFullscreenElement) return true;
+      try {   // 從主畫面開啟（像 App 一樣）本來就沒有網址列
+        return window.matchMedia('(display-mode: fullscreen)').matches || window.matchMedia('(display-mode: standalone)').matches || !!navigator.standalone;
+      } catch (e) { return false; }
+    },
+    enter: function () {
+      var el = document.documentElement;
+      try {
+        if (el.requestFullscreen) return el.requestFullscreen({ navigationUI: 'hide' }).catch(function () { });
+        if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+      } catch (e) { /* 不支援就算了 */ }
+    },
+    exit: function () {
+      try {
+        if (document.exitFullscreen && document.fullscreenElement) document.exitFullscreen();
+        else if (document.webkitExitFullscreen && document.webkitFullscreenElement) document.webkitExitFullscreen();
+      } catch (e) { /* ignore */ }
+    },
+    onChange: function (cb) {
+      document.addEventListener('fullscreenchange', cb);
+      document.addEventListener('webkitfullscreenchange', cb);
+    }
   };
 
   /* ---------------- 教師口白查詢 ---------------- */

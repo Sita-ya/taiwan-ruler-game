@@ -22,10 +22,12 @@
     </div>
     <div class="tb-mid">
       <button class="btn tab on" data-act="mode" data-arg="control">🎛 控制模式</button>
-      <button class="btn tab" data-act="mode" data-arg="proj">📽 投影模式</button>
+      <button class="btn tab" data-act="mode" data-arg="proj" title="這台螢幕直接切成投影畫面（螢幕「複製」時用）">📽 投影模式</button>
+      <button class="btn tab proj-win" data-act="openProj" title="另開一個視窗，拖到電子白板（螢幕「延伸」時用）">🖥 開啟投影視窗</button>
     </div>
     <div class="tb-right">
       <span id="tbConn" class="conn"></span>
+      <button class="btn stu-fs" id="stuFsBtn" data-act="stuFs" title="讓學生平板出現「點一下進入全螢幕」">📱 平板全螢幕</button>
       <button class="btn pause-btn" id="pauseBtn" data-act="pause">⏸ 全班暫停</button>
     </div>
   </header>
