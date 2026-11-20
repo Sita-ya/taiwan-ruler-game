@@ -542,3 +542,36 @@ body.student input { -webkit-user-select: text; user-select: text; }
   .stage-card .flipper.s { width: 340px; height: 500px; }
   .tr-l { min-width: 0; }
 }
+
+/* ---------- 教師首頁：歷史紀錄 ---------- */
+.gate-card.wide { width: min(1000px, 100%); }
+.btn.hbtn { font-size: 20px; min-height: 52px; padding: 6px 18px; box-shadow: 0 3px 0 var(--ink); }
+.btn.hbtn.danger { box-shadow: 0 3px 0 var(--red); }
+.hist { text-align: left; margin: 18px 0 8px; padding-top: 14px; border-top: 3px dashed #ccd; }
+.hist h2 { font-size: 24px; margin: 0 0 10px; }
+.hist h2 small { font-size: 16px; color: #555; font-weight: 600; }
+.hist-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.hist-table { width: 100%; border-collapse: collapse; font-size: 18px; }
+.hist-table th, .hist-table td { border-bottom: 2px solid #e3e3ea; padding: 8px 10px; vertical-align: middle; }
+.hist-table th { background: #F3F4F8; text-align: left; white-space: nowrap; }
+.hist-table td.hc { font-size: 26px; font-weight: 900; letter-spacing: 2px; }
+.hist-table td.hb { white-space: nowrap; }
+.hist-table td.hb .btn { margin: 3px 4px 3px 0; white-space: nowrap; }
+.hist .muted { color: #777; font-size: 16px; }
+.hist .warn-txt { color: #9a6400; font-size: 16px; font-weight: 700; }
+.code-open { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 16px; }
+.code-open label { font-weight: 800; }
+.gate-card .code-open input { width: 180px; margin: 0; font-size: 24px; padding: 8px 12px; letter-spacing: 4px; }
+.ro-tag { background: #FFF1C9; border: 2px solid var(--gold); border-radius: 10px; padding: 2px 8px; font-size: 16px; }
+.modal { position: fixed; inset: 0; background: rgba(20, 22, 35, .55); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 9999; }
+.modal-card { background: #fff; border: 5px solid var(--ink); border-radius: 26px; padding: 26px 28px; width: min(620px, 100%); }
+.modal-card h2 { margin-top: 0; }
+.modal-btns { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+@media (max-width: 900px) {
+  .gate-card.wide { padding: 24px 16px; }
+  .hist-table { font-size: 16px; }
+  .hist-table th, .hist-table td { padding: 6px 5px; }
+  .hist-table td.hc { font-size: 22px; letter-spacing: 1px; }
+  .hist-table td.hb { white-space: normal; }
+  .hist-table td.hb .btn { display: block; width: 100%; margin: 4px 0; padding: 4px 8px; font-size: 18px; }
+}
