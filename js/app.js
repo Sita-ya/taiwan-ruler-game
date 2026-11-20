@@ -275,14 +275,33 @@
    *      = 'online' 連線版（Firebase；網址有 ?mock=1 時改用測試用假資料庫）
    * 回傳 { db, uid, kind }
    */
+  // 同一頁面重複呼叫時共用同一個連線（避免 Firebase 程式被載入兩次）
+  var netCache = {};
   TW.initNet = function (kind) {
+    var key = kind === 'local' ? 'local' : 'online';
+    if (!netCache[key]) netCache[key] = initNetRaw(kind).catch(function (e) { delete netCache[key]; throw e; });
+    return netCache[key].then(function (n) { TW.net = n; return n; });
+  };
+  function mockUid() {
+    var u = TW.params.get('uid');
+    if (u) return u;
+    // 老師頁面：模擬 Firebase 匿名登入「同一個瀏覽器記得同一個編號」
+    var isTeacher = document.body && document.body.classList.contains('teacher');
+    if (isTeacher) { try { u = localStorage.getItem('tw_mock_uid'); } catch (e) { u = null; } }
+    if (!u) {
+      u = 'u' + Math.random().toString(36).slice(2, 8);
+      if (isTeacher) { try { localStorage.setItem('tw_mock_uid', u); } catch (e) { /* ignore */ } }
+    }
+    return u;
+  }
+  function initNetRaw(kind) {
     if (kind === 'local') {
       // shared：同一台電腦的「投影視窗」也能即時同步
       TW.net = { db: new window.LocalDB({ persistKey: 'tw_local_db', shared: true }), uid: 'local', kind: 'local' };
       return Promise.resolve(TW.net);
     }
     if (TW.isMock) {
-      var uid = TW.params.get('uid') || ('u' + Math.random().toString(36).slice(2, 8));
+      var uid = mockUid();
       TW.net = { db: new window.LocalDB({ persistKey: 'tw_mock_db', shared: true, rules: true, uid: uid }), uid: uid, kind: 'online' };
       return Promise.resolve(TW.net);
     }
@@ -311,7 +330,7 @@
           e = new Error((e && e.message) || '連線失敗，請檢查網路。');
         throw e;
       });
-  };
+  }
   TW.roomRef = function (code) { return TW.net.db.ref('rooms/' + code); };
   TW.watchConnection = function (cb) {
     TW.net.db.ref('.info/connected').on('value', function (s) { cb(!!s.val()); });

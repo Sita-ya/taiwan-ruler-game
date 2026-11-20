@@ -63,29 +63,199 @@
     $('#pw1').focus();
   }
 
+  /* ================= 歷史紀錄（只存在這台電腦的瀏覽器 localStorage） =================
+   * tw_teacher_hist = [{ code, createdAt, groups, f }]
+   *   code 房間代碼／createdAt 開房時間（毫秒）／groups 組數／f 最後記錄到的步驟編號
+   * 超過 KEEP_DAYS 天的紀錄會自動從清單移除（雲端資料不受影響）。 */
+  var HIST_KEY = 'tw_teacher_hist';
+  var KEEP_DAYS = Number(C.historyDays) > 0 ? Number(C.historyDays) : 30;
+  var live = {};   // 首頁即時讀到的雲端狀態：live[code] = { exists, owner, f }
+
+  function histLoad() {
+    var a;
+    try { a = JSON.parse(LS.get(HIST_KEY) || '[]'); } catch (e) { a = []; }
+    if (!Array.isArray(a)) a = [];
+    a = a.filter(function (h) { return h && /^\d{4}$/.test(String(h.code)); });
+    // 舊版只記「上次的房間」：搬進清單
+    var old = LS.get('tw_teacher_room');
+    if (old && /^\d{4}$/.test(old) && !a.some(function (h) { return h.code === old; })) a.push({ code: old, createdAt: Date.now(), groups: null });
+    if (old) LS.del('tw_teacher_room');
+    var limit = Date.now() - KEEP_DAYS * 86400000;
+    a = a.filter(function (h) { return typeof h.createdAt === 'number' && h.createdAt >= limit; });
+    histSave(a);
+    return a;
+  }
+  function histSave(a) { LS.set(HIST_KEY, JSON.stringify(a)); }
+  function histPut(entry) {
+    var a = histLoad().filter(function (h) { return h.code !== entry.code; });
+    a.push(entry); histSave(a);
+  }
+  function histPatch(code, fields) {
+    var a = histLoad(), hit = false;
+    a.forEach(function (h) { if (h.code === code) { for (var k in fields) h[k] = fields[k]; hit = true; } });
+    if (hit) histSave(a);
+  }
+  function histRemove(code) { histSave(histLoad().filter(function (h) { return h.code !== code; })); }
+
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function fmtTime(ms) {
+    var d = new Date(ms);
+    return d.getFullYear() + '/' + pad(d.getMonth() + 1) + '/' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+  function stepLabel(f) {
+    var fr = FR[f]; if (!fr) return '—';
+    return fr.step + '　' + fr.title;
+  }
+  function stepCell(h) {
+    var L = live[h.code];
+    if (L === 'loading') return '<span class="muted">讀取中…</span>';
+    if (L === 'fail') return (typeof h.f === 'number' ? esc(stepLabel(h.f)) + '<br>' : '') + '<span class="muted">（目前無法連線讀取）</span>';
+    if (L && !L.exists) return '<span class="muted">雲端已沒有這個房間的資料</span>';
+    if (L) return esc(stepLabel(L.f)) + (L.owner ? '' : '<br><span class="warn-txt">👀 不是用這個瀏覽器開的，只能檢視</span>');
+    if (typeof h.f === 'number') return esc(stepLabel(h.f)) + '<br><span class="muted">（上次在這台電腦看到的）</span>';
+    return '<span class="muted">—</span>';
+  }
+
+  function showHome(msg) { showModeSelect(msg); }
   function showModeSelect(msg) {
-    var saved = LS.get('tw_teacher_room');
     var fbOk = TW.firebaseReady() || TW.isMock;
+    var hist = histLoad().sort(function (a, b) { return b.createdAt - a.createdAt; });
     var h = '<h1>' + esc(C.texts.gameTitle) + '</h1><p class="small">教師控制台</p>';
     if (msg) h += '<div class="err">' + esc(msg) + '</div>';
     if (!fbOk) h += '<div class="warn">⚠️ 還沒有設定 Firebase，連線版暫時不能用。請先照 README 設定，或使用下方的「單機投影模式」。</div>';
     h += '<button class="btn big primary" id="mNew"' + (fbOk ? '' : ' disabled') + '>🌐 連線模式：開新的一局</button>';
-    if (saved) h += '<button class="btn big" id="mResume"' + (fbOk ? '' : ' disabled') + '>↩ 繼續上次的房間（' + esc(saved) + '）</button>';
-    h += '<button class="btn big" id="mLocal">🖥 單機投影模式（不連線）</button>' +
-      '<p class="small"><a href="#" id="chPw">變更教師密碼</a></p>';
+
+    // 歷史紀錄
+    h += '<section class="hist"><h2>📚 歷史紀錄 <small>（這台電腦開過的房間，保留 ' + KEEP_DAYS + ' 天）</small></h2>';
+    if (!hist.length) {
+      h += '<p class="small">還沒有紀錄。按「開新的一局」之後，房間會自動記在這裡。</p>';
+    } else {
+      h += '<div class="hist-wrap"><table class="hist-table"><thead><tr><th>房間代碼</th><th>建立時間</th><th>摘要</th><th>目前步驟</th><th>操作</th></tr></thead><tbody>';
+      hist.forEach(function (it) {
+        h += '<tr><td class="hc">' + esc(it.code) + '</td><td>' + esc(fmtTime(it.createdAt)) + '</td>' +
+          '<td>' + (it.groups ? esc(it.groups) + ' 組' : '—') + '</td>' +
+          '<td id="hs' + esc(it.code) + '">' + stepCell(it) + '</td>' +
+          '<td class="hb"><button class="btn hbtn primary" data-h="open" data-code="' + esc(it.code) + '"' + (fbOk ? '' : ' disabled') + '>▶ 繼續</button>' +
+          '<button class="btn hbtn danger" data-h="del" data-code="' + esc(it.code) + '">✕ 移除</button></td></tr>';
+      });
+      h += '</tbody></table></div>';
+    }
+    h += '<div class="code-open"><label for="codeIn">用房間代碼打開</label>' +
+      '<input id="codeIn" inputmode="numeric" maxlength="4" placeholder="4 位數代碼" autocomplete="off">' +
+      '<button class="btn hbtn" id="codeGo"' + (fbOk ? '' : ' disabled') + '>打開</button></div>' +
+      '<p class="small">清單被清掉、或換了一台電腦時用。不是用這個瀏覽器開的房間，只能檢視、不能控場。</p></section>';
+
+    // 單機投影模式（只有一個固定的「單機房間」，存在這台電腦）
+    h += '<button class="btn big" id="mLocal">🖥 單機投影模式（不連線）</button>';
+    var lf = localStep();
+    h += '<p class="small">' + (lf === null ? '單機模式只有一個房間，資料存在這台電腦。'
+      : '單機模式會自動接續上次的進度（目前：' + esc(stepLabel(lf)) + '）。要重來請在控制台按「⏮ 重新開始」。') + '</p>';
+    h += '<p class="small"><a href="#" id="chPw">變更教師密碼</a></p>';
     gate(h);
+    $('#gateCard').classList.add('wide');
+
     $('#mNew').onclick = function () { startOnline('new'); };
-    if (saved) $('#mResume').onclick = function () { startOnline('resume'); };
     $('#mLocal').onclick = startLocal;
+    $('#codeGo').onclick = function () {
+      var c = $('#codeIn').value.replace(/\D/g, '');
+      if (!/^\d{4}$/.test(c)) { toast('請輸入 4 位數的房間代碼。'); $('#codeIn').focus(); return; }
+      openRoom(c);
+    };
+    $('#codeIn').onkeydown = function (e) { if (e.key === 'Enter') $('#codeGo').click(); };
+    Array.prototype.forEach.call(document.querySelectorAll('#gateCard [data-h]'), function (b) {
+      b.onclick = function () {
+        var c = b.getAttribute('data-code');
+        if (b.getAttribute('data-h') === 'open') openRoom(c); else askRemove(c);
+      };
+    });
     $('#chPw').onclick = function (e) {
       e.preventDefault();
       var p = prompt('請輸入新的教師密碼（至少 4 個字）：');
       if (p && p.length >= 4) sha(p).then(function (h2) { LS.set('tw_teacher_pw', h2); toast('密碼已更新'); });
     };
+    if (fbOk && hist.length) peekRooms(hist);
+  }
+
+  /** 首頁：連線讀取各房間「目前步驟」與「是不是我開的」（只讀，不寫入） */
+  function peekRooms(hist) {
+    hist.forEach(function (it) { if (!live[it.code]) live[it.code] = 'loading'; });
+    refreshCells(hist);
+    TW.initNet('online').then(function () {
+      hist.forEach(function (it) {
+        TW.roomRef(it.code).once('value').then(function (s) {
+          var v = s.val();
+          live[it.code] = v ? { exists: true, owner: v.teacherUid === TW.net.uid, f: TW.info(v).f } : { exists: false };
+          if (v && v.teacherUid === TW.net.uid) histPatch(it.code, { f: TW.info(v).f, groups: TW.groupCount(v) });
+        }).catch(function () { live[it.code] = 'fail'; }).then(function () { refreshCells([it]); });
+      });
+    }).catch(function () {
+      hist.forEach(function (it) { live[it.code] = 'fail'; });
+      refreshCells(hist);
+    });
+  }
+  function refreshCells(list) {
+    list.forEach(function (it) { var td = document.getElementById('hs' + it.code); if (td) td.innerHTML = stepCell(it); });
+  }
+  function localStep() {
+    try {
+      var t = JSON.parse(localStorage.getItem('tw_local_db'));
+      var r = t && t.rooms && t.rooms.local;
+      return r ? TW.info(r).f : null;
+    } catch (e) { return null; }
+  }
+
+  /* ---------- 移除（預設只移除清單；刪雲端要再確認，而且只有開房的瀏覽器能刪） ---------- */
+  function askRemove(code) {
+    var L = live[code], owner = !!(L && L.exists && L.owner);
+    var m = document.createElement('div');
+    m.className = 'modal';
+    m.innerHTML = '<div class="modal-card"><h2>移除房間 ' + esc(code) + '？</h2>' +
+      '<p>「只從清單移除」：只是把它從<b>這台電腦的歷史清單</b>拿掉，<b>雲端上的房間資料不會刪除</b>，之後還能用房間代碼打開。</p>' +
+      (owner
+        ? '<p>「一併刪除雲端資料」：連同雲端上這一局的步驟、抽籤與各組紀錄<b>永久刪除</b>，學生端會馬上看不到這一局。</p>'
+        : '<p class="small">（要刪除雲端資料，必須連上網路，而且使用當初開房的這個瀏覽器。）</p>') +
+      '<div class="modal-btns"><button class="btn hbtn primary" data-m="list">🗂 只從清單移除</button>' +
+      (owner ? '<button class="btn hbtn danger" data-m="cloud">🗑 一併刪除雲端資料</button>' : '') +
+      '<button class="btn hbtn" data-m="cancel">取消</button></div></div>';
+    document.body.appendChild(m);
+    m.onclick = function (e) {
+      var b = e.target.closest('[data-m]');
+      if (!b && e.target !== m) return;
+      var w = b ? b.getAttribute('data-m') : 'cancel';
+      if (w === 'cloud' && !confirm('確定要「永久刪除」房間 ' + code + ' 的雲端資料嗎？\n刪除後無法復原，學生也無法再回到這一局。')) return;
+      m.remove();
+      if (w === 'list') { histRemove(code); delete live[code]; showHome(); toast('已從這台電腦的清單移除（雲端資料還在）。'); }
+      if (w === 'cloud') {
+        TW.roomRef(code).remove().then(function () {
+          histRemove(code); delete live[code]; showHome(); toast('已刪除房間 ' + code + ' 的雲端資料，也從清單移除。');
+        }).catch(function (err) { showHome('刪除失敗：' + TW.friendlyError(err)); });
+      }
+    };
   }
 
   /* ================= 進入房間 ================= */
-  function busy(msg) { gate('<h1>' + esc(msg) + '</h1><div class="spinner"></div>'); }
+  function busy(msg) { $('#gateCard').classList.remove('wide'); gate('<h1>' + esc(msg) + '</h1><div class="spinner"></div>'); }
+
+  /** 繼續／用代碼打開：重新訂閱這個房間。是自己開的就能控場，否則只能檢視。 */
+  function openRoom(code) {
+    busy('連線中…');
+    TW.initNet('online').then(function () {
+      return TW.roomRef(code).once('value');
+    }).then(function (s) {
+      var v = s.val();
+      if (!v) throw new Error('找不到房間 ' + code + ' 的資料（可能已被刪除，或代碼打錯）。');
+      S.kind = 'online'; S.code = code;
+      S.readonly = v.teacherUid !== TW.net.uid;
+      var old = histLoad().filter(function (h) { return h.code === code; })[0];
+      histPut({
+        code: code,
+        createdAt: old ? old.createdAt : (typeof v.createdAt === 'number' ? v.createdAt : Date.now()),
+        groups: TW.groupCount(v), f: TW.info(v).f
+      });
+    }).then(enterApp).then(function () {
+      if (S.readonly) toast('👀 這個房間不是用這個瀏覽器開的：只能檢視，不能控場。');
+    }).catch(function (e) { showHome(TW.friendlyError(e)); });
+  }
 
   function randCode() { return String(Math.floor(1000 + Math.random() * 9000)); }
   function newRoomData() {
@@ -97,18 +267,10 @@
     };
   }
 
-  function startOnline(how) {
+  function startOnline() {
     busy('連線中…');
     TW.initNet('online').then(function () {
-      S.kind = 'online';
-      if (how === 'resume') {
-        var code = LS.get('tw_teacher_room');
-        return TW.roomRef(code).once('value').then(function (s) {
-          var v = s.val();
-          if (!v || v.teacherUid !== TW.net.uid) throw new Error('找不到這個房間，或它不是用這台電腦開的。請開新的一局。');
-          S.code = code;
-        });
-      }
+      S.kind = 'online'; S.readonly = false;
       return createRoom();
     }).then(enterApp).catch(function (e) {
       showModeSelect(TW.friendlyError(e));
@@ -124,7 +286,11 @@
         var v = s.val();
         var stale = v && typeof v.createdAt === 'number' && v.createdAt < Date.now() - 43200000;
         if (v && !stale) return attempt();
-        return TW.roomRef(code).set(newRoomData()).then(function () { S.code = code; LS.set('tw_teacher_room', code); });
+        var data = newRoomData();
+        return TW.roomRef(code).set(data).then(function () {
+          S.code = code; S.readonly = false;
+          histPut({ code: code, createdAt: Date.now(), groups: data.cfg.groups, f: 0 });   // 記進這台電腦的歷史清單
+        });
       });
     }
     return attempt();
@@ -133,7 +299,7 @@
   function startLocal() {
     busy('準備中…');
     TW.initNet('local').then(function () {
-      S.kind = 'local'; S.code = 'local';
+      S.kind = 'local'; S.code = 'local'; S.readonly = false;
       return TW.roomRef('local').once('value');
     }).then(function (s) {
       if (!s.exists()) return TW.roomRef('local').set(newRoomData());
@@ -144,8 +310,9 @@
     $('#gate').hidden = true;
     $('#app').hidden = false;
     $('#tbRoom').innerHTML = S.kind === 'online'
-      ? '房間代碼 <b>' + esc(S.code) + '</b>'
+      ? '房間代碼 <b>' + esc(S.code) + '</b>' + (S.readonly ? '　<span class="ro-tag" title="不是用這個瀏覽器開的房間，不能控場">👀 只能檢視</span>' : '')
       : '<b>單機投影模式</b>（不連線）';
+    document.body.classList.toggle('readonly', !!S.readonly);
     TW.preload(TW.imageList());                     // 大廳階段就把圖片載好
     if (S.kind === 'online') {
       TW.watchConnection(function (ok) {
@@ -167,7 +334,9 @@
 
   /* ================= 寫入動作（只有老師能做） ================= */
   function R() { return TW.roomRef(S.code); }
+  var RO_MSG = '👀 這個房間不是用這個瀏覽器開的，只能檢視、不能控場。';
   function write(updates) {
+    if (S.readonly) { toast(RO_MSG); return Promise.resolve(); }
     return R().update(updates).catch(function (e) { toast('❗ ' + TW.friendlyError(e)); });
   }
   function frameUpdates(idx) {
@@ -229,7 +398,7 @@
       createRoom().then(enterApp).catch(function (e) { showModeSelect(TW.friendlyError(e)); $('#gate').hidden = false; $('#app').hidden = true; });
     },
     logout: function () {
-      if (!confirm('回到選單？（房間資料會保留，可以按「繼續上次的房間」回來）')) return;
+      if (!confirm('回到選單？（房間資料會保留，可以在「歷史紀錄」按「繼續」回來）')) return;
       location.reload();
     },
     kick: function (g) {
@@ -283,6 +452,7 @@
       else if (id === 'line1' || id === 'rev3') TW.sound.play('ok');
     }
     renderAll(fresh);
+    if (S.kind === 'online' && !S.readonly && S.lastF !== inf.f) histPatch(S.code, { f: inf.f, groups: cfg.groups });
     S.lastF = inf.f;
   }
 
@@ -450,11 +620,15 @@
       if (S.dragged) { S.dragged = false; return; }
       S.mapZoom = !S.mapZoom; gates.pv({ r: Math.random() }); renderStage(S.mode === 'proj' ? $('#fullBox') : $('#pvBox'), false); return;
     }
+    if (S.readonly && act[a] && !/^(mode|openProj|copy|logout)$/.test(a)) { e.preventDefault(); toast(RO_MSG); return; }
     if (act[a]) { e.preventDefault(); act[a](arg); }
   });
   document.addEventListener('change', function (e) {
     var id = e.target.id;
     if (!S.room) return;
+    if (S.readonly && /^set/.test(id)) {   // 只能檢視：把設定畫面還原
+      toast(RO_MSG); gates.settings({ r: Math.random() }); renderAll(false); return;
+    }
     if (id === 'setGroups') {
       if (TW.info(S.room).f > IDX.draw0) return;
       write({ 'cfg/groups': Number(e.target.value), 'assign': null });
@@ -468,6 +642,7 @@
   });
   document.addEventListener('keydown', function (e) {
     if (S.mode !== 'proj' || !S.room) return;
+    if (S.readonly && e.key !== 'c' && e.key !== 'C' && e.key !== 'Escape') return;
     if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); act.next(); }
     else if (e.key === 'ArrowLeft') { e.preventDefault(); act.prev(); }
     else if (e.key === 'p' || e.key === 'P') act.pause();
