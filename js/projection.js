@@ -98,7 +98,8 @@
       h += '<div class="ch-foot" style="left:' + axisW + 'px;height:' + AV + 'px">';
       o.items.forEach(function (it) {
         h += '<div class="ch-who' + (o.dim && !it.hl ? ' dim' : '') + '">' + TW.avatar(it.fam, o.avSize || 110) +
-          '<div class="who-n">' + esc(it.fam.name) + '</div><div class="who-g">' + gname(it.g) + '</div></div>';
+          '<div class="who-n">' + esc(it.fam.name) + '</div><div class="who-g">' + gname(it.g) + '</div>' +
+          (o.marks ? (TW.eligible(it.fam) ? '<div class="who-mark below">⬇ 線下</div>' : '<div class="who-mark above">⬆ 線上</div>') : '') + '</div>';
       });
       h += '</div>';
     }
@@ -190,7 +191,7 @@
     var L = TW.lineTotal();
     var txt = TW.fillText(T.line1Text, { perPerson: TW.fmt(C.line.perPerson), line: TW.fmt(L) });
     return title('政府的紅線') + '<div class="line-layout">' +
-      chart({ w: 1180, h: 760, yMax: 100000, ticks: [0, 20000, 40000, 60000, 80000, 100000], items: chartItems(room), lines: [redLine()] }) +
+      chart({ w: 1180, h: 800, avH: 240, marks: true, yMax: 100000, ticks: [0, 20000, 40000, 60000, 80000, 100000], items: chartItems(room), lines: [redLine()] }) +
       '<div class="line-text"><div class="lt-big">約 ' + TW.fmt(Math.round(L / 100) * 100) + ' 元</div>' + esc(txt) + '</div></div>';
   };
 

@@ -209,11 +209,14 @@
     var fresh = S.lastF !== null && S.lastF !== inf.f;
     if (fresh) {
       S.moodSel = null;
+      S.noticeKey = null;                 // 換步驟：通知的 10 秒倒數重新計算
       if (inf.id === 'sub2') TW.sound.play('subsidy');
       else if (/^bill\d$/.test(inf.id)) TW.sound.play('bill');
     }
     var L = ledger();
-    var h = '<div class="s-wrap ' + (fresh ? 'anim' : 'noanim') + '">' + header(L, inf) + '<div class="s-main">' + body(L, inf) + '</div>' + tray(L, inf) + '</div>';
+    S.look = false;                       // body() 回傳「請抬頭看大螢幕」時會設成 true，順便收起下方的錢
+    var main = body(L, inf);
+    var h = '<div class="s-wrap ' + (fresh ? 'anim' : 'noanim') + (S.look ? ' look' : '') + '">' + header(L, inf) + '<div class="s-main">' + main + '</div>' + (S.look ? '' : tray(L, inf)) + '</div>';
     var keep = $('#moodText') && document.activeElement === $('#moodText');
     if (keep) { return; }       // 正在打字時不重畫，避免鍵盤收起來
     root(h);
@@ -233,6 +236,27 @@
 
   function bigWait(emoji, t1, t2) {
     return '<div class="s-wait"><div class="sw-e">' + emoji + '</div><div class="sw-t">' + esc(t1) + '</div>' + (t2 ? '<div class="sw-s">' + esc(t2) + '</div>' : '') + '</div>';
+  }
+  /** 「請抬頭看大螢幕」：平板上不留可以點、可以盯著看的東西。subHtml＝下方一行小字（可留空） */
+  function lookUp(subHtml) {
+    S.look = true;
+    return '<div class="s-look"><div class="lk-e">👀</div><div class="lk-t">' + esc(T.lookUp || '請抬頭看大螢幕') + '</div>' +
+      (subHtml ? '<div class="lk-s">' + subHtml + '</div>' : '') + '</div>';
+  }
+  /** 通知只顯示幾秒（config.js 的 studentNoticeSeconds，預設 10 秒），時間到自動切成「請抬頭看大螢幕」 */
+  function timed(html, subHtml) {
+    var secs = Number(C.studentNoticeSeconds) || 10, key = TW.info(S.room).f + ':' + S.g;
+    if (S.noticeKey !== key) {
+      S.noticeKey = key; S.noticeAt = Date.now();
+      setTimeout(function () { if (S.noticeKey === key) renderGame(true); }, secs * 1000 + 80);
+    }
+    var gone = (Date.now() - S.noticeAt) / 1000;
+    if (gone >= secs) return lookUp(subHtml);
+    return html + '<div class="nt-timer" style="--d:' + secs + 's;--dl:-' + gone.toFixed(2) + 's"></div>';
+  }
+  function moodLabel(m) {
+    var mo = m && C.moods.filter(function (x) { return x.key === m.k; })[0];
+    return mo ? mo.emoji + ' ' + esc(m.k === 'custom' ? (m.t || '') : mo.label) : '';
   }
 
   function famCardHtml(L) {
@@ -255,17 +279,17 @@
     }
     if (!L) return bigWait('🎲', '等待老師抽籤…');
     if (id === 'draw0') return '<div class="stage-card">' + flipper(['？', '身分卡'], '', false) + '</div>' + '<div class="s-hint">等老師按「抽籤」</div>';
-    if (id === 'draw1') return '<div class="stage-card">' + flipper(['？', '身分卡'], famCardHtml(L), true) + '</div><div class="s-hint">請念出我們家的介紹和月收入</div>';
+    if (id === 'draw1') return '<div class="stage-card">' + flipper(['？', '身分卡'], famCardHtml(L), true) + '</div><div class="s-hint">' + esc(T.drawHint || '各組等待老師點名後，念出家庭的介紹和月收入') + '</div>';
     if (/^bill\d$/.test(id) || id === 'fate1') return payView(L, inf, cfg);
     if (id === 'fate0') return '<div class="stage-card">' + flipper(['🃏', '命運卡'], '', false) + '</div><div class="s-hint">等老師抽命運卡</div>';
-    if (id === 'billsum' || id === 'fatesum') return balanceView(L, '請看大螢幕');
-    if (id === 'line1') return lineView(L);
+    if (id === 'billsum' || id === 'fatesum') return lookUp('我們家現在 ' + TW.money(L.balance, { rich: true, sign: true }) + ' 元' + (L.balance < 0 ? '（欠債中）' : ''));
+    if (id === 'line1') return lookUp('');
     if (id === 'sub2') return subsidyView(L);
     if (id === 'rev3') return reverseView(L);
     if (id === 'mood4') return moodView(L, inf);
     if (id === 'marg5') return margView(L);
     if (id === 'sum6') return summaryView(L);
-    return bigWait('👀', '請看大螢幕', '聽老師說');
+    return lookUp('');
   }
 
   /* ---- 繳費 ---- */
@@ -280,20 +304,20 @@
       (o.bill && o.bill.note ? '<div class="bc-note">' + esc(o.bill.note) + '</div>' : '') +
       (o.fate ? '<div class="bc-note">' + esc(C.fate.text) + '</div>' : '') +
       '<div class="bc-pay">繳款</div><div class="bc-amt">' + TW.fmt(o.amount) + '<small>元</small></div>';
-    if (!L.pending.length) {
-      h += '<div class="paid-ok">✔ 已繳費</div><div class="s-hint">等老師公布下一步</div></div>';
-      return '<div class="pay-layout">' + h + '</div>';
+    if (!L.pending.length) {      // 繳完了：收起帳單，請學生抬頭
+      return lookUp('✔ ' + esc(cur.label) + '　已繳費');
     }
     h += '</div>';
     var ans = L.balance - o.amount, r = '';
     if (cfg.calc) {
       var st = calcState();
-      r += '<div class="calc"><div class="calc-q">請輸入要繳的金額：<b>' + TW.fmt(o.amount) + '</b> 元</div>' +
+      r += '<div class="calc"><div class="calc-q">請於下方鍵盤中，輸入要繳的金額：<b>' + TW.fmt(o.amount) + '</b> 元</div>' +
         '<div class="calc-show"><span class="calc-in ' + (st.input ? '' : 'ph') + '">' + (st.input ? fmtInput(st.input) : '？') + '</span></div>';
       if (st.msg) r += '<div class="calc-msg">' + esc(st.msg) + '</div>';
       if (st.solved) {
-        r += '<div class="calc-ok">' + (st.reveal ? '就是這個金額，按繳費！' : '✔ 金額正確！') + '</div>' +
-          '<button class="btn pay" data-act="pay"' + (S.paying ? ' disabled' : '') + '>💸 繳費</button>';
+        r += '<div class="calc-ok">' + (st.reveal ? '✔ 就是這個金額！' : '✔ 金額正確！') + '</div>' +
+          '<div class="calc-go">按下⬇️確認繳費</div>' +
+          '<button class="btn pay" data-act="pay"' + (S.paying ? ' disabled' : '') + '>💸 確認繳費</button>';
       } else {
         r += keypad();
       }
@@ -315,45 +339,33 @@
       k('0', '0') + '<button class="key ok" data-act="check">確定</button></div>';
   }
 
-  function balanceView(L, hint) {
-    var neg = L.balance < 0;
-    return '<div class="bal-card"><div class="bal-l">我們家現在</div><div class="bal-n">' + TW.money(L.balance, { rich: true, sign: true }) + '<small>元</small></div>' +
-      (neg ? '<div class="debt-tag">欠債中</div>' : '') + '</div><div class="s-hint">' + esc(hint) + '</div>';
-  }
-
-  function lineView(L) {
-    var line = TW.lineTotal(), f = L.fam, below = f.income < line, max = Math.max(line, f.income) * 1.1;
-    return '<div class="cmp-card"><div class="cmp-t">我們家的收入 和 政府的紅線</div>' +
-      '<div class="cmp-row"><span class="cmp-n">我們家月收入</span><span class="cmp-bar"><i style="width:' + (f.income / max * 100) + '%;background:' + f.color + '"></i></span><b>' + TW.fmt(f.income) + '</b></div>' +
-      '<div class="cmp-row"><span class="cmp-n">最低生活費（三人）</span><span class="cmp-bar"><i style="width:' + (line / max * 100) + '%;background:#D62839"></i></span><b>' + TW.fmt(line) + '</b></div>' +
-      '<div class="cmp-res ' + (below ? 'below' : 'above') + '">' + (below ? '⬇ 我們家的收入「在線下」' : '⬆ 我們家的收入「在線上」') + '</div>' +
-      '<div class="cmp-note">全家收入平均下來比這條線低，就可以申請成為低收入戶。</div></div>';
-  }
-
   function subsidyView(L) {
-    if (L.eligible) {
-      return '<div class="notice good"><div class="nt-e">💰</div><div class="nt-t">' + esc(T.subsidyTitle) + '</div>' +
+    if (L.eligible) {     // 補助通知也只顯示幾秒，之後請學生抬頭
+      return timed('<div class="notice good"><div class="nt-e">💰</div><div class="nt-t">' + esc(T.subsidyTitle) + '</div>' +
         '<div class="nt-s">通過審核！政府補助 <b class="money pos">+' + TW.fmt(L.subsidy) + '</b> 元</div>' +
-        (L.balance >= 0 && L.subsidy > 0 ? '<div class="nt-b">債務還清了</div>' : '') + '</div>';
+        (L.balance >= 0 && L.subsidy > 0 ? '<div class="nt-b">債務還清了</div>' : '') + '</div>',
+        '💰 已領到補助，我們家現在 ' + TW.money(L.balance, { rich: true, sign: true }) + ' 元');
     }
-    return bigWait('👀', '這次補助只發給「收入在線下」的家庭', '請看大螢幕');
+    return lookUp('');
   }
 
   function reverseView(L) {
     var line = TW.lineTotal(), f = L.fam;
-    if (L.eligible) return bigWait('👀', '你們家已經領到補助了', '請看大螢幕，想一想小美家的情況');
+    if (L.eligible) return lookUp('');
+    var after = '我們家現在 ' + TW.money(L.balance, { rich: true, sign: true }) + ' 元' + (L.balance < 0 ? '（欠債中）' : '');
     if (L.balance < 0) {
-      return '<div class="notice sorry"><div class="nt-e">✉️</div><div class="nt-t">審核結果通知</div>' +
+      return timed('<div class="notice sorry"><div class="nt-e">✉️</div><div class="nt-t">審核結果通知</div>' +
         '<div class="nt-s">很抱歉，你們家每月收入 ' + TW.fmt(f.income) + ' 元，比最低生活費多了 ' + TW.fmt(f.income - line) + ' 元，不符合低收入戶資格。</div>' +
-        '<div class="nt-b">目前餘額 ' + TW.money(L.balance, { rich: true, sign: true }) + ' 元（欠債中）</div></div>';
+        '<div class="nt-b">目前餘額 ' + TW.money(L.balance, { rich: true, sign: true }) + ' 元（欠債中）</div></div>', after);
     }
-    return '<div class="notice"><div class="nt-e">✉️</div><div class="nt-t">審核結果通知</div>' +
+    return timed('<div class="notice"><div class="nt-e">✉️</div><div class="nt-t">審核結果通知</div>' +
       '<div class="nt-s">你們家每月收入 ' + TW.fmt(f.income) + ' 元，比最低生活費多了 ' + TW.fmt(f.income - line) + ' 元，不符合低收入戶資格，也不需要補助。</div>' +
-      '<div class="nt-b">目前餘額 ' + TW.money(L.balance, { rich: true, sign: true }) + ' 元</div></div>';
+      '<div class="nt-b">目前餘額 ' + TW.money(L.balance, { rich: true, sign: true }) + ' 元</div></div>', after);
   }
 
   function moodView(L, inf) {
     var gd = (S.room.groups && S.room.groups[S.g]) || {}, sent = gd.mood;
+    if (sent) return lookUp('✔ 已送出：' + moodLabel(sent));     // 送出後就不能再改，請學生抬頭
     var c = TW.isMarginal(L.fam);
     var h = '<div class="mood-q">' + esc(c ? T.moodPromptC : T.moodPromptOthers) + '</div><div class="mood-btns">';
     C.moods.forEach(function (m) {
@@ -368,15 +380,13 @@
     }
     var ready = sel && (sel !== 'custom' || (S.moodText || (sent && sent.t) || '').trim());
     h += '<button class="btn pay" id="moodSendBtn" data-act="moodSend"' + (ready && S.moodSel ? '' : ' disabled') + '>送出</button>';
-    if (sent) h += '<div class="sent">✔ 已送出' + (sent.k === 'custom' ? '：' + esc(sent.t || '') : '') + '（可以改了再送出）</div>';
-    if (!S.moodText && sent && sent.k === 'custom') S.moodText = sent.t || '';
+    h += '<div class="s-hint small">送出後就不能再修改喔</div>';
     return h;
   }
 
   function margView(L) {
     var gd = (S.room.groups && S.room.groups[S.g]) || {}, sent = gd.mood;
-    var mo = sent && C.moods.filter(function (m) { return m.key === sent.k; })[0];
-    return bigWait('💭', '聽聽大家的想法', '請看大螢幕') + (mo ? '<div class="sent">你的心情：' + mo.emoji + ' ' + esc(sent.k === 'custom' ? (sent.t || '') : mo.label) + '</div>' : '');
+    return lookUp(sent ? '你的心情：' + moodLabel(sent) : '');
   }
 
   function summaryView(L) {
