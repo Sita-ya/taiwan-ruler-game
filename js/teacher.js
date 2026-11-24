@@ -518,21 +518,36 @@
 
   function renderNotes(inf) {
     var h = '<h3>🗒 教師口白提示 <small>（' + esc(inf.frame.step) + '・' + esc(inf.frame.title) + '）</small></h3>';
-    var LG = C.lessonGoals;
-    if (inf.id === 'lobby' && LG) {     // 大廳時先看整節課的教學目標
-      h += '<details class="lesson-goals" open><summary>📚 ' + esc(LG.title) + '</summary><ul>' +
-        (LG.goals || []).map(function (g) { return '<li>' + esc(g) + '</li>'; }).join('') + '</ul>' +
-        (LG.timeline ? '<div class="lg-time">⏱ ' + esc(LG.timeline) + '</div>' : '') + '</details>';
-    }
     var N = TW.notesFor(inf.frame);
+    function line(n) {
+      var t = TW.NOTE_TYPES[n.type] || TW.NOTE_TYPES.say;
+      return '<p class="note n-' + esc(n.type || 'say') + '"><b>' + t.icon + ' ' + esc(t.label) + '</b>' + esc(n.text) + '</p>';
+    }
+    // ① 上課要說的話：依說話順序排（開場 → 引起動機 → 說明 → 提問〔＋預期反應〕→ 收攏 → 過渡）
+    var RANK = { open: 1, hook: 2, explain: 3, say: 3, ask: 4, close: 5, next: 6 };
+    var talk = [], tips = [], prev = 3;
+    N.lines.forEach(function (n, i) {
+      if (n.type === 'tip') { tips.push(n); return; }
+      var r = n.type === 'expect' ? prev : (RANK[n.type] || 3);   // 預期反應緊跟在它前面的提問後
+      if (n.type !== 'expect') prev = r;
+      talk.push({ n: n, r: r, i: i });
+    });
+    talk.sort(function (a, b) { return a.r - b.r || a.i - b.i; });
+    if (talk.length) h += '<div class="note-sec">🗣 上課要說的話</div>' + talk.map(function (x) { return line(x.n); }).join('');
+    // ② 老師提醒
+    if (tips.length) h += '<div class="note-sec">⚠️ 老師提醒</div>' + tips.map(line).join('');
+    // ③ 這一步的目標（備查，放最下面）
     if (N.goal) {
       h += '<div class="note-goal"><b>🎯 這一步的目標</b>' + esc(N.goal) +
         ((N.ref || N.time) ? '<div class="ng-meta">' + (N.ref ? '<span class="ng-ref">' + esc(N.ref) + '</span>' : '') + (N.time ? '<span class="ng-time">⏱ ' + esc(N.time) + '</span>' : '') + '</div>' : '') + '</div>';
     }
-    N.lines.forEach(function (n) {
-      var t = TW.NOTE_TYPES[n.type] || TW.NOTE_TYPES.say;
-      h += '<p class="note n-' + esc(n.type || 'say') + '"><b>' + t.icon + ' ' + esc(t.label) + '</b>' + esc(n.text) + '</p>';
-    });
+    // ④ 整節課的教學目標（只在大廳，預設收合）
+    var LG = C.lessonGoals;
+    if (inf.id === 'lobby' && LG) {
+      h += '<details class="lesson-goals"><summary>📚 ' + esc(LG.title) + '（點開看教學目標）</summary><ul>' +
+        (LG.goals || []).map(function (g) { return '<li>' + esc(g) + '</li>'; }).join('') + '</ul>' +
+        (LG.timeline ? '<div class="lg-time">⏱ ' + esc(LG.timeline) + '</div>' : '') + '</details>';
+    }
     if (!N.goal && !N.lines.length) h += '<p class="note n-tip">（這一步沒有設定口白，可在 config.js 的 notes 加上）</p>';
     $('#notesPanel').innerHTML = h;
   }
