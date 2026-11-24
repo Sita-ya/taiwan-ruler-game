@@ -304,6 +304,9 @@ body.proj-mode { overflow: hidden; }
 .ch-who .avatar { margin: 0 auto; }
 .who-n { font-size: 30px; font-weight: 900; line-height: 1.15; margin-top: 4px; }
 .who-g { font-size: 24px; color: #666; }
+.who-mark { display: inline-block; margin-top: 4px; font-size: 26px; font-weight: 900; padding: 0 14px; border-radius: 16px; }
+.who-mark.below { background: #D8F3DF; color: var(--green); }
+.who-mark.above { background: #FFF1C9; color: #8a5a00; }
 .line-text { flex: 1; background: #fff; border: 6px solid var(--ink); border-radius: 36px; padding: 26px 34px; font-size: 35px; line-height: 1.5; font-weight: 600; }
 .lt-big { font-size: 78px; font-weight: 900; color: var(--red); line-height: 1.1; margin-bottom: 14px; }
 .line-text.two .lt-o { color: #b25f00; font-weight: 800; }
@@ -548,6 +551,22 @@ body.student input { -webkit-user-select: text; user-select: text; }
 .chip.note { width: 104px; height: 55px; }
 .chips-label { font-size: 16px; color: var(--red); font-weight: 800; }
 .fly-coin { position: fixed; width: 46px; height: 46px; z-index: 5000; pointer-events: none; transition: transform .8s cubic-bezier(.5,0,.8,.4), opacity .8s; }
+
+/* 「請抬頭看大螢幕」：畫面乾淨、沒有可以點的東西 */
+.s-wrap.look .s-main { background: var(--ink); color: #fff; }
+.s-look { text-align: center; }
+.lk-e { font-size: 150px; line-height: 1.1; animation: look 2s infinite; }
+.lk-t { font-size: 64px; font-weight: 900; margin-top: 6px; }
+.lk-s { font-size: 28px; font-weight: 700; margin-top: 16px; background: rgba(255,255,255,.12); border-radius: 20px; padding: 6px 24px; display: inline-block; }
+.lk-s .money.pos { color: #8BE3A5; }
+.lk-s .money.neg { color: #FF8A95; }
+.noanim .s-look .lk-e { animation: look 2s infinite !important; }
+/* 通知的倒數條（時間到自動切成「請抬頭看大螢幕」） */
+.nt-timer { width: min(820px, 100%); height: 10px; background: var(--gold); border-radius: 5px; transform-origin: left; }
+.s-wrap .nt-timer.nt-timer { animation: ntShrink var(--d, 10s) linear var(--dl, 0s) forwards !important; }
+@keyframes ntShrink { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+.calc-go { font-size: 26px; font-weight: 900; color: var(--ink); margin: 2px 0 0; }
+.s-hint.small { font-size: 20px; font-weight: 700; }
 
 .pause-overlay { position: fixed; inset: 0; background: var(--ink); z-index: 10000; display: flex; align-items: center; justify-content: center; color: #fff; text-align: center; }
 .pause-eyes { font-size: 220px; line-height: 1.1; animation: look 2s infinite; }
