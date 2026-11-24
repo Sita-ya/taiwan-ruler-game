@@ -9,7 +9,7 @@
   'use strict';
   var TW = window.TW, $ = function (s) { return document.querySelector(s); };
   var local = TW.params.has('local'), code = local ? 'local' : TW.params.get('room');
-  var room = null, lastF = null, mapZoom = false, dragged = false;
+  var room = null, lastF = null, mapZoom = false, dragged = false, vidN;
   var gate = TW.makeGate();
 
   function msg(t) { $('#msg').textContent = t || ''; $('#msg').hidden = !t; }
@@ -19,8 +19,14 @@
     var inf = TW.info(room);
     var fresh = lastF !== null && lastF !== inf.f;
     if (fresh) mapZoom = false;
-    if (!gate([JSON.stringify(room), mapZoom]) && !force && !fresh) return;
     var box = $('#box');
+    // 老師按了 ▶／⏸／⏮（剛打開視窗時不重播舊指令）
+    var v = room.state && room.state.vid, n = v ? v.n : 0;
+    if (vidN === undefined) vidN = n;
+    else if (n !== vidN) { vidN = n; if (v) TW.yt(box, v.cmd); }
+    // 影片播放中：不要重畫，否則影片會從頭開始
+    if (inf.id === 'video' && !fresh && !force && box.querySelector('iframe.yt')) { lastF = inf.f; return; }
+    if (!gate([JSON.stringify(room), mapZoom]) && !force && !fresh) return;
     box.innerHTML = '<div class="stage ' + (fresh ? 'anim' : 'noanim') + '">' + TW.projection(room, TW.projEnv(local ? 'local' : 'online', code, mapZoom)) + '</div>';
     fit();
     TW.runFlips(box, fresh);

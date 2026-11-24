@@ -61,6 +61,8 @@
   add('rev3', '4-3', '大反轉', '大反轉', 'rev3');
   add('mood4', '4-4', '說說心情', '說說心情', 'mood');
   add('marg5', '4-4', '「邊緣戶」說明', '說明「邊緣戶」', 'marg');
+  add('video', '4-4', '影片：貧窮生存戰', '🎬 進入影片', 'video');
+  add('videoSum', '4-4', '影片之後：整理與收攏', '影片之後：整理', 'videoSum');
   add('w1', '5-1', '世界的尺：每人每天 3 美元', '進入：世界的尺', 'world');
   add('w2', '5-2', '約 90 元的一天', '下一頁', 'world');
   add('w3', '5-3', '世界地圖', '下一頁', 'world');
@@ -277,10 +279,19 @@
    */
   // 同一頁面重複呼叫時共用同一個連線（避免 Firebase 程式被載入兩次）
   var netCache = {};
+  // 「最後一次選擇的模式」才有權決定 TW.net。
+  // 例：首頁在背景連線讀取歷史房間時，老師先按了「單機投影模式」，背景連線晚一點才完成——
+  // 這時不能把單機模式的連線換掉，否則之後每次換步驟都會出現「沒有權限」。
   TW.initNet = function (kind) {
     var key = kind === 'local' ? 'local' : 'online';
+    TW._want = key;
     if (!netCache[key]) netCache[key] = initNetRaw(kind).catch(function (e) { delete netCache[key]; throw e; });
-    return netCache[key].then(function (n) { TW.net = n; return n; });
+    return netCache[key].then(function (n) { if (TW._want === key) TW.net = n; return n; });
+  };
+  /** 背景讀取用：取得連線但「不」改變目前的模式（不會搶走 TW.net） */
+  TW.peekNet = function () {
+    if (!netCache.online) netCache.online = initNetRaw('online').catch(function (e) { delete netCache.online; throw e; });
+    return netCache.online;
   };
   function mockUid() {
     var u = TW.params.get('uid');
@@ -297,13 +308,11 @@
   function initNetRaw(kind) {
     if (kind === 'local') {
       // shared：同一台電腦的「投影視窗」也能即時同步
-      TW.net = { db: new window.LocalDB({ persistKey: 'tw_local_db', shared: true }), uid: 'local', kind: 'local' };
-      return Promise.resolve(TW.net);
+      return Promise.resolve({ db: new window.LocalDB({ persistKey: 'tw_local_db', shared: true }), uid: 'local', kind: 'local' });
     }
     if (TW.isMock) {
       var uid = mockUid();
-      TW.net = { db: new window.LocalDB({ persistKey: 'tw_mock_db', shared: true, rules: true, uid: uid }), uid: uid, kind: 'online' };
-      return Promise.resolve(TW.net);
+      return Promise.resolve({ db: new window.LocalDB({ persistKey: 'tw_mock_db', shared: true, rules: true, uid: uid }), uid: uid, kind: 'online' });
     }
     if (!TW.firebaseReady()) {
       return Promise.reject(new Error('尚未設定 Firebase。請先照 README 把設定貼進 config.js，或改用「單機投影模式」。'));
@@ -317,8 +326,7 @@
         return firebase.auth().signInAnonymously();
       })
       .then(function () {
-        TW.net = { db: firebase.database(), uid: firebase.auth().currentUser.uid, kind: 'online' };
-        return TW.net;
+        return { db: firebase.database(), uid: firebase.auth().currentUser.uid, kind: 'online' };
       })
       .catch(function (e) {
         var code = e && e.code;
@@ -355,9 +363,30 @@
     } catch (e) { qrCache[url] = '<div class="qr-fail">QR code 產生失敗</div>'; }
     return qrCache[url];
   };
-  TW.projEnv = function (kind, code, mapZoom) {
+  /** preview = true：老師控制台裡的小預覽（影片不在這裡播放，只顯示縮圖，避免兩邊同時出聲） */
+  TW.projEnv = function (kind, code, mapZoom, preview) {
     var on = kind === 'online';
-    return { kind: kind, code: code, baseUrl: on ? TW.baseUrl() + 'student.html' : '', qr: on ? TW.qrSvg(TW.studentUrl(code)) : '', mapZoom: mapZoom };
+    return { kind: kind, code: code, baseUrl: on ? TW.baseUrl() + 'student.html' : '', qr: on ? TW.qrSvg(TW.studentUrl(code)) : '', mapZoom: mapZoom, preview: !!preview };
+  };
+
+  /* ---------------- YouTube 影片（老師在控制台遙控投影畫面上的影片） ---------------- */
+  TW.ytSrc = function () {
+    var V = C.video || {};
+    if (!V.youtubeId) return '';
+    var origin = /^https?:/.test(location.origin) ? '&origin=' + encodeURIComponent(location.origin) : '';
+    return 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(V.youtubeId) +
+      '?rel=0&modestbranding=1&playsinline=1&enablejsapi=1' +
+      (V.start ? '&start=' + Number(V.start) : '') + (V.end ? '&end=' + Number(V.end) : '') + origin;
+  };
+  /** cmd = play | pause | restart，對 box 裡的影片下指令 */
+  TW.yt = function (box, cmd) {
+    var f = box && box.querySelector('iframe.yt');
+    if (!f || !f.contentWindow) return false;
+    var send = function (func, args) { f.contentWindow.postMessage(JSON.stringify({ event: 'command', func: func, args: args || [] }), '*'); };
+    if (cmd === 'play') send('playVideo');
+    else if (cmd === 'pause') send('pauseVideo');
+    else if (cmd === 'restart') { send('seekTo', [Number((C.video || {}).start) || 0, true]); send('playVideo'); }
+    return true;
   };
 
   /* ---------------- 全螢幕（瀏覽器規定：一定要「在那台裝置上點一下」才能進入） ---------------- */

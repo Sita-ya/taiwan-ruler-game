@@ -20,6 +20,19 @@
   function title(txt, sub) {
     return '<h1 class="pj-title">' + esc(txt) + '</h1>' + (sub ? '<div class="pj-sub">' + sub + '</div>' : '');
   }
+  /** 簡報文字（config.js 的 slides）。帳單沒有個別設定時用 slides.bills */
+  function SL(id) {
+    var s = C.slides || {};
+    return s[id] || (/^bill\d$/.test(id) ? s.bills : null) || {};
+  }
+  /** 畫面下方的「❓ 想一想」提問條 */
+  function askBar(t, cls) {
+    return t ? '<div class="pj-ask ' + (cls || '') + '"><span class="ask-l">❓ 想一想</span>' + br(t) + '</div>' : '';
+  }
+  function points(list, cls) {
+    if (!list || !list.length) return '';
+    return '<ul class="pj-points ' + (cls || '') + '">' + list.map(function (p) { return '<li>' + br(p) + '</li>'; }).join('') + '</ul>';
+  }
 
   function progressBar(room, env, label) {
     if (auto(env)) return '';
@@ -116,7 +129,8 @@
 
   /* ---------- 各步驟 ---------- */
   P.lobby = function (room, inf, env) {
-    var n = TW.groupCount(room), h = '<div class="lobby">' + '<h1 class="pj-title huge">' + esc(T.gameTitle) + '</h1>';
+    var n = TW.groupCount(room), h = '<div class="lobby">' + '<h1 class="pj-title huge">' + esc(T.gameTitle) + '</h1>' +
+      (SL('lobby').sub ? '<div class="pj-sub lobby-sub">' + br(SL('lobby').sub) + '</div>' : '');
     if (env.kind === 'online') {
       h += '<div class="lobby-body"><div class="code-box"><div class="cb-l">房間代碼</div><div class="code">' + esc(env.code || '----') +
         '</div><div class="cb-u">學生用平板掃描 QR code，或打開<br><b>' + esc((env.baseUrl || '').replace(/^https?:\/\//, '')) + '</b><br>輸入代碼</div></div>' +
@@ -134,10 +148,10 @@
   };
 
   P.draw0 = function (room) {
-    return title('抽身分卡', '每一組抽一個「三人家庭」，用抽籤決定！') + familyCards(room, false);
+    return title('抽身分卡', br(SL('draw0').sub || '每一組抽一個「三人家庭」，用抽籤決定！')) + familyCards(room, false) + askBar(SL('draw0').ask);
   };
   P.draw1 = function (room) {
-    return title('我們這個月的身分') + familyCards(room, true);
+    return title('我們這個月的身分') + familyCards(room, true) + askBar(SL('draw1').ask);
   };
 
   function billPanel(room, inf, env) {
@@ -146,7 +160,8 @@
     var left = '<div class="bill-big" style="animation-delay:0s"><div class="bb-icon">' + b.icon + '</div>' +
       '<div class="bb-cat">' + esc(b.cat) + '</div><div class="bb-name">' + esc(b.name) + '</div>' +
       (b.note ? '<div class="bb-note">' + esc(b.note) + '</div>' : '') +
-      '<div class="bb-amt">' + MINUSTXT() + TW.fmt(b.amount) + '<small>元</small></div></div>';
+      '<div class="bb-amt">' + MINUSTXT() + TW.fmt(b.amount) + '<small>元</small></div>' +
+      (SL(inf.id).ask ? '<div class="bb-ask">❓ ' + br(SL(inf.id).ask) + '</div>' : '') + '</div>';
     var total = 0, rows = '';
     C.bills.forEach(function (x, i) {
       var open = i < k; if (open) total += x.amount;
@@ -164,7 +179,8 @@
   C.bills.forEach(function (b, i) { P['bill' + (i + 1)] = function (room, inf, env) { return title('生活大扣血') + billPanel(room, inf, env); }; });
 
   P.billsum = function (room, inf, env) {
-    return title('帳單都繳完了！各組現況', '誰開始欠錢了呢？') + statusCards(room, env);
+    var s = SL('billsum');
+    return title('帳單都繳完了！各組現況', br(s.sub || '誰開始欠錢了呢？')) + statusCards(room, env) + askBar(s.ask);
   };
 
   function fateCard(room, up) {
@@ -176,15 +192,18 @@
       '<div class="face content">' + (up ? content : '') + '</div></div></div>';
   }
   P.fate0 = function (room) {
-    return title('命運事件', '生活中總有意外……') + fateCard(room, false);
+    return title('命運事件', br(SL('fate0').sub || '生活中總有意外……')) + fateCard(room, false) + askBar(SL('fate0').ask);
   };
   P.fate1 = function (room, inf, env) {
+    var a = SL('fate1').ask;
     return title('命運事件') + '<div class="fate-wrap">' + fateCard(room, true) +
       '<div class="fate-side"><div class="fs-l">每一組都要支付</div><div class="fs-amt">−' + TW.fmt(C.fate.amount) + '<small>元</small></div>' +
+      (a ? '<div class="side-ask">❓ ' + br(a) + '</div>' : '') +
       progressBar(room, env, '已繳費') + '</div></div>';
   };
   P.fatesum = function (room, inf, env) {
-    return title('命運事件之後，各組現況', 'C 組現在的狀況怎麼樣？') + statusCards(room, env);
+    var s = SL('fatesum');
+    return title('命運事件之後，各組現況', br(s.sub || 'C 組現在的狀況怎麼樣？')) + statusCards(room, env) + askBar(s.ask);
   };
 
   P.line1 = function (room) {
@@ -192,7 +211,9 @@
     var txt = TW.fillText(T.line1Text, { perPerson: TW.fmt(C.line.perPerson), line: TW.fmt(L) });
     return title('政府的紅線') + '<div class="line-layout">' +
       chart({ w: 1180, h: 800, avH: 240, marks: true, yMax: 100000, ticks: [0, 20000, 40000, 60000, 80000, 100000], items: chartItems(room), lines: [redLine()] }) +
-      '<div class="line-text"><div class="lt-big">約 ' + TW.fmt(Math.round(L / 100) * 100) + ' 元</div>' + esc(txt) + '</div></div>';
+      '<div class="line-text"><div class="lt-big">約 ' + TW.fmt(Math.round(L / 100) * 100) + ' 元</div>' + br(txt) +
+      points(SL('line1').points, 'in-box') +
+      (SL('line1').ask ? '<div class="box-ask">❓ ' + br(SL('line1').ask) + '</div>' : '') + '</div></div>';
   };
 
   P.sub2 = function (room, inf, env) {
@@ -214,7 +235,7 @@
         '<div><div class="sc-g">' + esc(L.fam.name) + '</div><div class="sc-name small">收入在紅線上</div></div></div>' +
         '<div class="sc-bal">' + TW.money(L.balance, { rich: true, sign: true }) + '</div><div class="sc-tag ' + (L.balance < 0 ? 'debt' : 'okk') + '">' + (L.balance < 0 ? '欠債中' : '還有錢') + '</div></div>';
     });
-    return h + '</div>';
+    return h + '</div>' + askBar(SL('sub2').ask);
   };
 
   P.rev3 = function (room, inf, env) {
@@ -306,29 +327,59 @@
     var cs = [];
     groups(room).forEach(function (g) { var f = TW.famOf(room, g); if (f && isMarginal(f)) cs.push(f); });
     var av = cs.map(function (f) { return TW.avatar(f, 150); }).join('');
+    var p = SL('marg5').point;
     return '<div class="marg"><div class="marg-av">' + av + '</div>' +
-      '<div class="marg-t1">' + br(T.marginalText) + '</div><div class="marg-t2">' + br(T.marginalText2) + '</div></div>';
+      '<div class="marg-t1">' + br(T.marginalText) + '</div><div class="marg-t2">' + br(T.marginalText2) + '</div>' +
+      (p ? '<div class="marg-t3">' + br(p) + '</div>' : '') + '</div>';
+  };
+
+  /* ---- 影片：老師用控制台的 ▶／⏸／⏮ 遙控；控制台的小預覽只放縮圖，避免兩邊同時出聲 ---- */
+  P.video = function (room, inf, env) {
+    var V = C.video || {}, src = TW.ytSrc();
+    var head = '<div class="vid-head"><div class="vid-t">🎬 ' + esc(V.heading || '影片') + '</div>' +
+      (SL('video').sub ? '<div class="vid-s">' + br(SL('video').sub) + '</div>' : '') + '</div>';
+    var foot = '<div class="vid-credit">' + esc(V.credit || '') + '</div>';
+    if (!src) return head + '<div class="vid-box ph"><div class="vid-ph-t">（config.js 的 video 尚未設定影片）</div></div>';
+    if (env.preview) {
+      return head + '<div class="vid-box ph"><img src="https://i.ytimg.com/vi/' + esc(V.youtubeId) + '/hqdefault.jpg" alt="">' +
+        '<div class="vid-ph-t">🎬 影片在「投影畫面」播放<br><small>請用控制台下方的 ▶ 播放／⏸ 暫停／⏮ 從頭</small></div></div>' + foot;
+    }
+    return head + '<div class="vid-box"><iframe class="yt" src="' + esc(src) + '" title="' + esc(V.title || '影片') + '" ' +
+      'allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>' + foot;
+  };
+  P.videoSum = function () {
+    var s = SL('videoSum');
+    var stats = (s.stats || []).map(function (x, i) {
+      return '<div class="vs-card" style="animation-delay:' + (i * 0.15) + 's"><div class="vs-big">' + esc(x.big) + '</div><div class="vs-l">' + br(x.label) + '</div></div>';
+    }).join('');
+    return title(s.title || '影片之後', s.sub ? br(s.sub) : '') +
+      (stats ? '<div class="vs-row">' + stats + '</div>' : '') +
+      (s.source ? '<div class="vs-src">' + esc(s.source) + '</div>' : '') +
+      (s.statement ? '<div class="vs-stmt">' + br(s.statement) + '</div>' : '') +
+      askBar(s.ask);
   };
 
   P.w1 = function () {
     return '<div class="w1"><div class="w1-t">' + esc(T.world1) + '</div>' +
       '<div class="w1-big"><span class="w1-n">$3</span><span class="w1-u">美元<br>每人每天</span></div>' +
-      '<div class="w1-g">🌍 全世界通用的「極端貧窮線」</div></div>';
+      '<div class="w1-g">🌍 全世界通用的「極端貧窮線」</div></div>' + askBar(SL('w1').ask);
   };
   P.w2 = function () {
     return '<div class="w2"><div class="w2-a">' + esc(T.world2a) + '</div>' +
       '<div class="w2-img">' + TW.plainImg('assets/lunch_90.jpg', 'lunch', '便當和礦泉水') + '<div class="price-tag">' + esc(T.world2tag) + '</div></div>' +
-      '<div class="w2-b">' + esc(T.world2b) + '</div></div>';
+      '<div class="w2-b">' + esc(T.world2b) + '</div></div>' + askBar(SL('w2').ask, 'right');
   };
   P.w3 = function (room, inf, env) {
     var btn = C.worldMapUrl ? '<a class="map-btn" href="' + esc(C.worldMapUrl) + '" target="_blank" rel="noopener">🌏 開啟互動地圖</a>' : '';
+    var hint = SL('w3').hint;
     return '<div class="w3"><div class="w3-t">' + esc(T.world3) + '</div>' +
       '<div class="map-wrap ' + (env.mapZoom ? 'zoomed' : '') + '" data-act="mapzoom"><img class="map-img" src="assets/world_map.jpg" alt="極端貧窮人口比例世界地圖" draggable="false"></div>' +
-      '<div class="map-hint">' + (env.mapZoom ? '點一下縮回' : '點一下地圖可以放大') + '</div>' + btn + '</div>';
+      '<div class="map-hint">' + (hint ? esc(hint) + '<br>' : '') + (env.mapZoom ? '點一下縮回' : '點一下地圖可以放大') + '</div>' + btn + '</div>';
   };
   P.w4 = function () {
+    var p = SL('w4').point;
     return '<div class="w4"><div class="w4-img">' + TW.plainImg('assets/sdg1.png', 'sdg', 'SDG 1 消除貧窮') + '</div>' +
-      '<div class="w4-t">' + esc(T.world4) + '</div></div>';
+      '<div><div class="w4-t">' + esc(T.world4) + '</div>' + (p ? '<div class="w4-p">' + br(p) + '</div>' : '') + '</div></div>';
   };
 
   function ruler(cls, o) {
@@ -337,7 +388,9 @@
       '<div class="rc-big">' + esc(o.big) + '</div><div class="rc-sub">' + esc(o.sub) + '</div><div class="rc-desc">' + esc(o.desc) + '</div></div>';
   }
   P.sum6 = function () {
+    var a = SL('sum6').ask;
     return title('今天的兩把尺') + '<div class="rulers">' + ruler('tw', T.summaryTW) + ruler('wd', T.summaryWorld) + '</div>' +
+      (a ? '<div class="sum-ask">❓ ' + br(a) + '</div>' : '') +
       '<div class="sum-next">' + esc(T.summaryNext) + '</div>';
   };
 
@@ -350,7 +403,9 @@
         lines: [redLine(), { v: C.line.midTotal, color: ORANGE, label: '中低收入戶　' + TW.fmt(C.line.midTotal) + ' 元' }]
       }) +
       '<div class="line-text two"><div class="lt-o">' + esc(T.line2Text) + '</div>' +
-      '<div class="callout">⭐ ' + esc(T.line2Callout) + '</div></div></div>';
+      '<div class="callout">⭐ ' + esc(T.line2Callout) + '</div>' +
+      points(SL('line2').points, 'in-box') +
+      (SL('line2').ask ? '<div class="box-ask">❓ ' + br(SL('line2').ask) + '</div>' : '') + '</div></div>';
   };
 
   /* ---------- 對外入口 ---------- */

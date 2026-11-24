@@ -180,12 +180,12 @@
   function peekRooms(hist) {
     hist.forEach(function (it) { if (!live[it.code]) live[it.code] = 'loading'; });
     refreshCells(hist);
-    TW.initNet('online').then(function () {
+    TW.peekNet().then(function (net) {      // 背景讀取：不搶走老師之後選的模式（例如單機模式）
       hist.forEach(function (it) {
-        TW.roomRef(it.code).once('value').then(function (s) {
+        net.db.ref('rooms/' + it.code).once('value').then(function (s) {
           var v = s.val();
-          live[it.code] = v ? { exists: true, owner: v.teacherUid === TW.net.uid, f: TW.info(v).f } : { exists: false };
-          if (v && v.teacherUid === TW.net.uid) histPatch(it.code, { f: TW.info(v).f, groups: TW.groupCount(v) });
+          live[it.code] = v ? { exists: true, owner: v.teacherUid === net.uid, f: TW.info(v).f } : { exists: false };
+          if (v && v.teacherUid === net.uid) histPatch(it.code, { f: TW.info(v).f, groups: TW.groupCount(v) });
         }).catch(function () { live[it.code] = 'fail'; }).then(function () { refreshCells([it]); });
       });
     }).catch(function () {
@@ -226,7 +226,7 @@
       m.remove();
       if (w === 'list') { histRemove(code); delete live[code]; showHome(); toast('已從這台電腦的清單移除（雲端資料還在）。'); }
       if (w === 'cloud') {
-        TW.roomRef(code).remove().then(function () {
+        TW.peekNet().then(function (net) { return net.db.ref('rooms/' + code).remove(); }).then(function () {
           histRemove(code); delete live[code]; showHome(); toast('已刪除房間 ' + code + ' 的雲端資料，也從清單移除。');
         }).catch(function (err) { showHome('刪除失敗：' + TW.friendlyError(err)); });
       }
@@ -365,6 +365,10 @@
       if (p) TW.sound.play('pause');
     },
     mode: function (a) { setMode(a); },
+    vid: function (cmd) {
+      var v = (S.room.state && S.room.state.vid) || {};
+      write({ 'state/vid': { cmd: cmd, n: (v.n || 0) + 1 } });
+    },
     openProj: function () {
       var url = 'projector.html?' + (S.kind === 'local' ? 'local=1' : 'room=' + S.code) +
         (TW.isMock ? '&mock=1&uid=' + encodeURIComponent(TW.net.uid) : '');
@@ -438,7 +442,7 @@
   var gates = { steps: TW.makeGate(), notes: TW.makeGate(), groups: TW.makeGate(), settings: TW.makeGate(), pv: TW.makeGate(), nav: TW.makeGate(), top: TW.makeGate() };
 
   function studentUrl() { return TW.studentUrl(S.code); }
-  function env() { return TW.projEnv(S.kind, S.code, S.mapZoom); }
+  function env(preview) { return TW.projEnv(S.kind, S.code, S.mapZoom, preview); }
 
   function onRoom() {
     var inf = TW.info(S.room), cfg = TW.cfgOf(S.room);
@@ -475,7 +479,9 @@
     // 投影舞台（預覽或全螢幕）
     var box = S.mode === 'proj' ? $('#fullBox') : $('#pvBox');
     var sigPv = [JSON.stringify(room), S.mode, S.mapZoom];
-    if (gates.pv(sigPv) || fresh) renderStage(box, fresh);
+    var playing = inf.id === 'video' && !fresh && box.querySelector('iframe.yt');   // 影片播放中：不要重畫，否則影片會重來
+    if ((gates.pv(sigPv) || fresh) && !playing) renderStage(box, fresh);
+    applyVideoCmd();
 
     if (S.mode !== 'control') return;
 
@@ -486,8 +492,17 @@
     if (gates.settings([room.cfg, inf.f])) renderSettings(inf, cfg);
   }
 
+  /** 老師按了 ▶／⏸／⏮：只對「投影模式」這個視窗裡的影片下指令（獨立投影視窗自己會處理） */
+  function applyVideoCmd() {
+    var v = S.room && S.room.state && S.room.state.vid;
+    var n = v ? v.n : 0;
+    if (S.vidN === undefined) { S.vidN = n; return; }       // 剛打開頁面：不重播舊指令
+    if (n === S.vidN) return;
+    S.vidN = n;
+    if (S.mode === 'proj' && v) TW.yt($('#fullBox'), v.cmd);
+  }
   function renderStage(box, fresh) {
-    var h = '<div class="stage ' + (fresh ? 'anim' : 'noanim') + '">' + TW.projection(S.room, env()) + '</div>';
+    var h = '<div class="stage ' + (fresh ? 'anim' : 'noanim') + '">' + TW.projection(S.room, env(box.id === 'pvBox')) + '</div>';
     box.innerHTML = h;
     fit(box);
     TW.runFlips(box, fresh);
@@ -571,6 +586,7 @@
     pbn.disabled = pi === inf.f;
     $('#navMid').innerHTML = ap === true ? '<span class="ok">✔ 全部繳完了，可以進行下一步</span>'
       : (ap === false ? '<span class="wait">等學生繳費中…</span>' : '<span>目前：' + esc(inf.frame.step) + '　' + esc(inf.frame.title) + '</span>');
+    $('#vidCtl').hidden = inf.id !== 'video';
   }
 
   function renderGroups(inf) {
@@ -629,6 +645,7 @@
   /* ================= 事件 ================= */
   function setMode(m) {
     S.mode = m;
+    if (m !== 'proj') $('#fullBox').innerHTML = '';     // 離開投影模式：清掉畫面，影片也會停止
     $('#control').hidden = m !== 'control';
     $('#topbar').hidden = m !== 'control';
     $('#projFull').hidden = m !== 'proj';
