@@ -365,6 +365,13 @@
       if (p) TW.sound.play('pause');
     },
     mode: function (a) { setMode(a); },
+    vidOpen: function () {
+      var u = TW.ytWatchUrl();
+      if (!u) { toast('config.js 的 video 還沒設定影片。'); return; }
+      var w = window.open(u, '_blank');
+      if (!w) { toast('瀏覽器擋下了新分頁：請允許彈出式視窗後再按一次。'); return; }
+      try { w.opener = null; } catch (e) { /* ignore */ }
+    },
     vid: function (cmd) {
       var v = (S.room.state && S.room.state.vid) || {};
       write({ 'state/vid': { cmd: cmd, n: (v.n || 0) + 1 } });
@@ -587,6 +594,7 @@
     $('#navMid').innerHTML = ap === true ? '<span class="ok">✔ 全部繳完了，可以進行下一步</span>'
       : (ap === false ? '<span class="wait">等學生繳費中…</span>' : '<span>目前：' + esc(inf.frame.step) + '　' + esc(inf.frame.title) + '</span>');
     $('#vidCtl').hidden = inf.id !== 'video';
+    $('#vidCtl').classList.toggle('link', TW.videoMode() === 'link');
   }
 
   function renderGroups(inf) {

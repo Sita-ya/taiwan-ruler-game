@@ -378,6 +378,15 @@
       '?rel=0&modestbranding=1&playsinline=1&enablejsapi=1' +
       (V.start ? '&start=' + Number(V.start) : '') + (V.end ? '&end=' + Number(V.end) : '') + origin;
   };
+  /** 影片播放方式：'link'＝超連結（在 YouTube 新分頁開啟）｜'embed'＝嵌在簡報裡播放 */
+  TW.videoMode = function () { return ((C.video || {}).mode === 'embed') ? 'embed' : 'link'; };
+  /** YouTube 觀看網址（超連結模式用；只能指定開始時間，YouTube 網址沒辦法指定結束時間） */
+  TW.ytWatchUrl = function () {
+    var V = C.video || {};
+    if (!V.youtubeId) return '';
+    return 'https://www.youtube.com/watch?v=' + encodeURIComponent(V.youtubeId) + (V.start ? '&t=' + Number(V.start) + 's' : '');
+  };
+  TW.fmtSec = function (s) { s = Number(s) || 0; return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); };
   /** cmd = play | pause | restart，對 box 裡的影片下指令 */
   TW.yt = function (box, cmd) {
     var f = box && box.querySelector('iframe.yt');

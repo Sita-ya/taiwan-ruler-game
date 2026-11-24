@@ -340,6 +340,12 @@
       (SL('video').sub ? '<div class="vid-s">' + br(SL('video').sub) + '</div>' : '') + '</div>';
     var foot = '<div class="vid-credit">' + esc(V.credit || '') + '</div>';
     if (!src) return head + '<div class="vid-box ph"><div class="vid-ph-t">（config.js 的 video 尚未設定影片）</div></div>';
+    if (TW.videoMode() === 'link') {      // 超連結模式：放縮圖＋大按鈕，點了在 YouTube 新分頁開啟
+      var range = (V.start || V.end) ? '建議播放 ' + TW.fmtSec(V.start || 0) + (V.end ? '～' + TW.fmtSec(V.end) : ' 起') : '';
+      return head + '<div class="vid-box ph link"><img src="https://i.ytimg.com/vi/' + esc(V.youtubeId) + '/hqdefault.jpg" alt="">' +
+        '<div class="vid-ph-t"><a class="vid-link" href="' + esc(TW.ytWatchUrl()) + '" target="_blank" rel="noopener">▶ 在 YouTube 開啟影片</a>' +
+        '<small>影片會在新分頁開啟；看完請關掉分頁，回到簡報' + (range ? '<br>' + esc(range) : '') + '</small></div></div>' + foot;
+    }
     if (env.preview) {
       return head + '<div class="vid-box ph"><img src="https://i.ytimg.com/vi/' + esc(V.youtubeId) + '/hqdefault.jpg" alt="">' +
         '<div class="vid-ph-t">🎬 影片在「投影畫面」播放<br><small>請用控制台下方的 ▶ 播放／⏸ 暫停／⏮ 從頭</small></div></div>' + foot;
