@@ -10,6 +10,8 @@
 
   /* ---------- 共用元件 ---------- */
   function gname(g) { return '第 ' + g + ' 組'; }
+  /** 文字裡的 \n（config.js 中寫成 \n）＝在這裡換行 */
+  function br(s) { return esc(s).replace(/\n/g, '<br>'); }
   function groups(room) { var a = [], n = TW.groupCount(room); for (var g = 1; g <= n; g++) a.push(g); return a; }
   function auto(env) { return env.kind === 'local'; }
   function ledgerOf(room, g, env) { return TW.ledger(room, g, { auto: auto(env) }); }
@@ -254,13 +256,28 @@
       var m = room.groups && room.groups[g] && room.groups[g].mood;
       if (m && counts[m.k] != null) { counts[m.k]++; total++; }
     });
-    var h = '<div class="mood-stats"><div class="ms-title">全班的心情（' + total + ' / ' + n + ' 組已回答）</div>';
+    var hasCustom = counts.custom > 0;
+    var h = '<div class="mood-stats' + (hasCustom ? ' has-custom' : '') + '"><div class="ms-title">全班的心情（' + total + ' / ' + n + ' 組已回答）</div>';
     C.moods.forEach(function (m) {
       var c = counts[m.key];
       h += '<div class="ms-row"><span class="ms-e">' + m.emoji + '</span><span class="ms-l">' + esc(m.label) + '</span>' +
         '<span class="ms-bar"><i style="width:' + (n ? c / n * 100 : 0) + '%"></i></span><span class="ms-c">' + c + '</span></div>';
+      if (m.key === 'custom') h += customList(room);   // 「自訂一句話」底下：小字列出各組寫的話
     });
     return h + '</div>';
+  }
+  /** 列出有寫「自訂一句話」的組別與內容（老師按「隱藏回應」的不顯示） */
+  function customList(room) {
+    var items = '';
+    groups(room).forEach(function (g) {
+      var gd = room.groups && room.groups[g], m = gd && gd.mood;
+      if (!m || m.k !== 'custom' || !m.t) return;
+      var fam = TW.famOf(room, g);
+      var who = '第 ' + g + ' 組' + (fam ? '・' + esc(fam.name) : '');
+      items += '<li style="--fc:' + (fam ? fam.color : '#999') + '"><b>' + who + '</b>' +
+        (gd.hide ? '<span class="mc-hide">（老師已隱藏）</span>' : '「' + esc(m.t) + '」') + '</li>';
+    });
+    return items ? '<ul class="ms-custom">' + items + '</ul>' : '';
   }
   P.mood4 = function (room, inf, env) {
     var h = title('說說心情', '小美家和小明家一樣在欠債，卻拿不到補助……');
@@ -289,7 +306,7 @@
     groups(room).forEach(function (g) { var f = TW.famOf(room, g); if (f && isMarginal(f)) cs.push(f); });
     var av = cs.map(function (f) { return TW.avatar(f, 150); }).join('');
     return '<div class="marg"><div class="marg-av">' + av + '</div>' +
-      '<div class="marg-t1">' + esc(T.marginalText) + '</div><div class="marg-t2">' + esc(T.marginalText2) + '</div></div>';
+      '<div class="marg-t1">' + br(T.marginalText) + '</div><div class="marg-t2">' + br(T.marginalText2) + '</div></div>';
   };
 
   P.w1 = function () {
