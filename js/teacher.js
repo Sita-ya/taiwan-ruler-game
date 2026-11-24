@@ -34,6 +34,8 @@
   function gate(html) { $('#gateCard').innerHTML = html; }
 
   function showLogin() {
+    var pr = TW.params.get('room'), pk = TW.params.get('ctrl');
+    if (pr && pk) return startRemote(pr, pk);          // 📲 平板遙控連結：不用密碼
     var has = LS.get('tw_teacher_pw');
     if (has && sessionStorage.getItem('tw_t_ok') === '1') return showModeSelect();
     if (!has) {
@@ -226,7 +228,11 @@
       m.remove();
       if (w === 'list') { histRemove(code); delete live[code]; showHome(); toast('已從這台電腦的清單移除（雲端資料還在）。'); }
       if (w === 'cloud') {
-        TW.peekNet().then(function (net) { return net.db.ref('rooms/' + code).remove(); }).then(function () {
+        // 先刪平板遙控的密鑰（keys 的權限要靠 rooms 裡的開房者判斷），再刪房間
+        TW.peekNet().then(function (net) {
+          return net.db.ref('keys/' + code).remove().catch(function () { /* 沒有密鑰也沒關係 */ })
+            .then(function () { return net.db.ref('rooms/' + code).remove(); });
+        }).then(function () {
           histRemove(code); delete live[code]; showHome(); toast('已刪除房間 ' + code + ' 的雲端資料，也從清單移除。');
         }).catch(function (err) { showHome('刪除失敗：' + TW.friendlyError(err)); });
       }
@@ -288,6 +294,9 @@
         if (v && !stale) return attempt();
         var data = newRoomData();
         return TW.roomRef(code).set(data).then(function () {
+          // 這個代碼以前用過：清掉舊的平板遙控密鑰，舊 QR code 才不能控制新的一局
+          return TW.net.db.ref('keys/' + code).remove().catch(function () { /* ignore */ });
+        }).then(function () {
           S.code = code; S.readonly = false;
           histPut({ code: code, createdAt: Date.now(), groups: data.cfg.groups, f: 0 });   // 記進這台電腦的歷史清單
         });
@@ -306,13 +315,17 @@
     }).then(enterApp).catch(function (e) { showModeSelect(TW.friendlyError(e)); });
   }
 
+  function setRoomLabel() {
+    $('#tbRoom').innerHTML = S.kind === 'online'
+      ? '房間代碼 <b>' + esc(S.code) + '</b>' + (S.readonly && !S.remote ? '　<span class="ro-tag" title="不是用這個瀏覽器開的房間，不能控場">👀 只能檢視</span>' : '')
+      : '<b>單機投影模式</b>（不連線）';
+    document.body.classList.toggle('readonly', !!S.readonly);
+  }
   function enterApp() {
     $('#gate').hidden = true;
     $('#app').hidden = false;
-    $('#tbRoom').innerHTML = S.kind === 'online'
-      ? '房間代碼 <b>' + esc(S.code) + '</b>' + (S.readonly ? '　<span class="ro-tag" title="不是用這個瀏覽器開的房間，不能控場">👀 只能檢視</span>' : '')
-      : '<b>單機投影模式</b>（不連線）';
-    document.body.classList.toggle('readonly', !!S.readonly);
+    document.body.classList.toggle('remote', !!S.remote);
+    setRoomLabel();
     TW.preload(TW.imageList());                     // 大廳階段就把圖片載好
     if (S.kind === 'online') {
       TW.watchConnection(function (ok) {
@@ -335,8 +348,10 @@
   /* ================= 寫入動作（只有老師能做） ================= */
   function R() { return TW.roomRef(S.code); }
   var RO_MSG = '👀 這個房間不是用這個瀏覽器開的，只能檢視、不能控場。';
+  var STOP_MSG = '🔒 老師已停止平板遙控。請在電腦的控制台按「📲 平板遙控」，再掃一次新的 QR code。';
+  function roMsg() { return S.remote ? STOP_MSG : RO_MSG; }
   function write(updates) {
-    if (S.readonly) { toast(RO_MSG); return Promise.resolve(); }
+    if (S.readonly) { toast(roMsg()); return Promise.resolve(); }
     return R().update(updates).catch(function (e) { toast('❗ ' + TW.friendlyError(e)); });
   }
   function frameUpdates(idx) {
@@ -433,6 +448,30 @@
       var cur = S.room.groups && S.room.groups[g] && S.room.groups[g].hide;
       var u = {}; u['groups/' + g + '/hide'] = cur ? null : true; write(u);
     },
+    remote: function () {
+      if (!S.owner || S.kind !== 'online') return;
+      ensureKey().then(showRemoteModal).catch(function (e) { toast('❗ ' + TW.friendlyError(e)); });
+    },
+    /* ⏱ 倒數計時 */
+    tmrStart: function (sec) {
+      sec = Math.round(Number(sec));
+      if (!(sec >= 1 && sec <= 3600)) { toast('請輸入 1～3600 秒（例如 20 秒、90 秒）'); return; }
+      tmrWrite({ end: TW.now() + sec * 1000, sec: sec });
+    },
+    tmrCustom: function () {
+      var i = $('#tmrIn'), v = i ? i.value.replace(/\D/g, '') : '';
+      var sec = Number(v);
+      if (!v || !(sec >= 1 && sec <= 3600)) { toast('請輸入 1～3600 秒（例如 20 秒、90 秒）'); if (i) i.focus(); return; }
+      if (i) i.value = '';
+      act.tmrStart(sec);
+    },
+    tmrAdd: function (add) {
+      add = Number(add);
+      var t = S.room.state && S.room.state.timer;
+      if (!TW.timerRunning(t)) { act.tmrStart(add); return; }      // 已經時間到：當作重新開始
+      tmrWrite({ end: Number(t.end) + add * 1000, sec: (Number(t.sec) || 0) + add });
+    },
+    tmrStop: function () { tmrWrite(null); },
     copy: function () {
       var url = studentUrl();
       if (navigator.clipboard) navigator.clipboard.writeText(url).then(function () { toast('已複製學生網址'); });
@@ -446,7 +485,131 @@
   function groupsList() { var a = [], n = TW.groupCount(S.room); for (var g = 1; g <= n; g++) a.push(g); return a; }
 
   /* ================= 畫面 ================= */
-  var gates = { steps: TW.makeGate(), notes: TW.makeGate(), groups: TW.makeGate(), settings: TW.makeGate(), pv: TW.makeGate(), nav: TW.makeGate(), top: TW.makeGate() };
+  var gates = { steps: TW.makeGate(), notes: TW.makeGate(), groups: TW.makeGate(), settings: TW.makeGate(), pv: TW.makeGate(), nav: TW.makeGate(), top: TW.makeGate(), timer: TW.makeGate() };
+
+  /* ---------- 📲 平板遙控 ----------
+   * keys/{房間}/key                 = 隨機密鑰（只有開房的電腦讀得到）
+   * keys/{房間}/ok/{密鑰}/{平板uid}  = true（平板「出示密鑰」，由安全規則核對）
+   * rooms/{房間}/ctrl/{平板uid}      = true（畫面用來判斷「這台可以控制」）
+   * 「停止所有平板遙控」＝刪掉 keys/{房間} 和 rooms/{房間}/ctrl，舊連結永久失效。 */
+  function genKey() {
+    var abc = 'abcdefghjkmnpqrstuvwxyz23456789', a = new Uint8Array(12), k = '';
+    (window.crypto || window.msCrypto).getRandomValues(a);
+    for (var i = 0; i < a.length; i++) k += abc[a[i] % abc.length];
+    return k;
+  }
+  function ensureKey() {
+    var ref = TW.net.db.ref('keys/' + S.code + '/key');
+    return ref.once('value').then(function (s) {
+      if (s.val()) return s.val();
+      var k = genKey();
+      return ref.set(k).then(function () { return k; });
+    });
+  }
+  function remoteUrl(key) {
+    return TW.baseUrl() + 'teacher.html?room=' + encodeURIComponent(S.code) + '&ctrl=' + encodeURIComponent(key) + (TW.isMock ? '&mock=1' : '');
+  }
+  function ctrlCount() { return S.room && S.room.ctrl ? Object.keys(S.room.ctrl).filter(function (k) { return S.room.ctrl[k]; }).length : 0; }
+  function countText(n) { return n ? '目前有 ' + n + ' 台平板在遙控' : '目前還沒有平板連上'; }
+
+  /** 每次房間資料更新時重新判斷：開房的電腦／遙控平板／只能檢視 */
+  function updateRemoteUI() {
+    var rb = $('#remoteBtn'), tag = $('#remoteTag'), ban = $('#remoteBanner');
+    if (S.kind !== 'online' || !S.room) { rb.hidden = true; tag.hidden = true; ban.hidden = true; return; }
+    var uid = TW.net.uid, owner = S.room.teacherUid === uid, ctrl = !!(S.room.ctrl && S.room.ctrl[uid]);
+    S.owner = owner;
+    var ro = !(owner || ctrl);
+    if (ro !== !!S.readonly) {
+      S.readonly = ro; setRoomLabel();
+      gates.settings({ r: Math.random() }); gates.timer({ r: Math.random() });
+    }
+    var n = ctrlCount();
+    rb.hidden = !owner;
+    rb.textContent = '📲 平板遙控' + (n ? ' (' + n + ')' : '');
+    tag.hidden = !(S.remote && ctrl);
+    ban.hidden = !(S.remote && !ctrl);
+    var mc = $('#rmCount'); if (mc) mc.textContent = countText(n);
+  }
+
+  function showRemoteModal(key) {
+    var old = $('#remoteModal'); if (old) old.remove();
+    var url = remoteUrl(key);
+    var m = document.createElement('div');
+    m.className = 'modal'; m.id = 'remoteModal';
+    m.innerHTML = '<div class="modal-card remote-card"><h2>📲 平板遙控</h2>' +
+      '<div class="rm-qr">' + TW.qrSvg(url) + '</div>' +
+      '<div class="rm-url"><code>' + esc(url) + '</code></div>' +
+      '<p>用平板相機掃描（不用輸入密碼）。電腦的控制台和投影視窗請繼續開著；平板和電腦可以同時控制。</p>' +
+      '<p class="rm-warn">⚠ 這個連結等於教師權限，不要給學生。</p>' +
+      '<p class="rm-count" id="rmCount">' + esc(countText(ctrlCount())) + '</p>' +
+      '<div class="modal-btns"><button class="btn hbtn" data-rm="close">關閉</button>' +
+      '<button class="btn hbtn danger" data-rm="stop">🔒 停止所有平板遙控</button></div></div>';
+    document.body.appendChild(m);
+    m.onclick = function (e) {
+      var b = e.target.closest('[data-rm]');
+      if (!b && e.target !== m) return;
+      var w = b ? b.getAttribute('data-rm') : 'close';
+      if (w === 'close') { m.remove(); return; }
+      if (w === 'stop') {
+        if (!confirm('確定要停止所有平板遙控嗎？\n所有平板會立刻變成「只能檢視」，現在這個 QR code 也會永久失效。')) return;
+        TW.net.db.ref('keys/' + S.code).remove()
+          .then(function () { return R().child('ctrl').remove(); })
+          .then(function () { m.remove(); toast('🔒 已停止所有平板遙控。下次再按「📲 平板遙控」會產生新的 QR code。'); })
+          .catch(function (err) { toast('❗ ' + TW.friendlyError(err)); });
+      }
+    };
+  }
+
+  /** 平板掃 QR code 進來：網址有 room＋ctrl，不用密碼 */
+  function startRemote(code, key) {
+    $('#gateCard').classList.remove('wide');
+    gate('<h1>📲 連線中…</h1><div class="spinner"></div>');
+    var uid;
+    TW.initNet('online').then(function () {
+      uid = TW.net.uid;
+      if (!/^\d{4}$/.test(code) || !/^[a-z0-9]{6,32}$/.test(key)) throw new Error('bad link');
+      return TW.net.db.ref('keys/' + code + '/ok/' + key + '/' + uid).set(true);      // 由安全規則核對密鑰
+    }).then(function () {
+      return TW.roomRef(code).child('ctrl/' + uid).set(true);
+    }).then(function () {
+      return TW.roomRef(code).once('value');
+    }).then(function (s) {
+      var v = s.val();
+      if (!v || !(v.ctrl && v.ctrl[uid])) throw new Error('no room');
+      S.kind = 'online'; S.code = code; S.remote = true; S.readonly = false;     // 不加進這台平板的歷史紀錄
+    }).then(enterApp).catch(function () {
+      gate('<h1>📲 這個遙控連結不能用了</h1><p>可能是老師按了「停止平板遙控」，或房間已刪除。</p>' +
+        '<p>請在電腦的控制台按「📲 平板遙控」，再掃一次新的 QR code。</p>');
+    });
+  }
+
+  /* ---------- ⏱ 倒數計時面板（任何步驟都能用） ---------- */
+  function renderTimer() {
+    var box = $('#timerPanel'); if (!box || !S.room) return;
+    var t = S.room.state && S.room.state.timer;
+    clearTimeout(S.tmrTO);
+    var h = '<h3>⏱ 倒數計時</h3>';
+    if (TW.timerRunning(t)) {
+      h += '<div class="tmr-live">' + TW.timerHTML(t, true) + '</div>' +
+        '<div class="tmr-btns"><button class="btn small" data-act="tmrAdd" data-arg="10">＋10 秒</button>' +
+        '<button class="btn small" data-act="tmrAdd" data-arg="30">＋30 秒</button>' +
+        '<button class="btn small" data-act="tmrAdd" data-arg="60">＋1 分</button>' +
+        '<button class="btn small danger" data-act="tmrStop">■ 停止</button></div>';
+      // 時間到之後自動回到「選時間」
+      S.tmrTO = setTimeout(function () { gates.timer({ r: Math.random() }); renderTimer(); }, Math.max(0, Number(t.end) - TW.now()) + 300);
+    } else {
+      var keep = $('#tmrIn') ? $('#tmrIn').value : '';
+      h += '<div class="tmr-btns">' + (C.timerPresets || [10, 20, 30, 45, 60, 90, 120, 180]).map(function (s) {
+        return '<button class="btn small" data-act="tmrStart" data-arg="' + Number(s) + '">' + esc(TW.secLabel(s)) + '</button>';
+      }).join('') + '</div>' +
+        '<div class="tmr-custom">自訂 <input id="tmrIn" type="text" inputmode="numeric" maxlength="4" placeholder="秒" value="' + esc(keep) + '"> 秒 ' +
+        '<button class="btn small primary" data-act="tmrCustom">開始</button></div>';
+    }
+    var focused = document.activeElement && document.activeElement.id === 'tmrIn';
+    box.innerHTML = h;
+    if (focused && $('#tmrIn')) { var i = $('#tmrIn'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
+  }
+  function tmrWrite(t) { return write({ 'state/timer': t }); }
 
   function studentUrl() { return TW.studentUrl(S.code); }
   function env(preview) { return TW.projEnv(S.kind, S.code, S.mapZoom, preview); }
@@ -463,13 +626,14 @@
       else if (id === 'line1' || id === 'rev3') TW.sound.play('ok');
     }
     renderAll(fresh);
-    if (S.kind === 'online' && !S.readonly && S.lastF !== inf.f) histPatch(S.code, { f: inf.f, groups: cfg.groups });
+    if (S.kind === 'online' && !S.readonly && !S.remote && S.lastF !== inf.f) histPatch(S.code, { f: inf.f, groups: cfg.groups });
     S.lastF = inf.f;
   }
 
   function renderAll(fresh) {
     var el = document.activeElement;
-    if (el && el.matches && el.matches('#control input[type=number], #control input[type=text]')) { S.pending = true; return; }
+    // 正在打字時先不重畫（倒數計時的「自訂秒數」框例外：計時面板只有計時器改變才重畫，打到一半的數字不會被清掉）
+    if (el && el.matches && el.matches('#control input[type=number]:not(#tmrIn), #control input[type=text]:not(#tmrIn)')) { S.pending = true; return; }
     S.pending = false;
     var room = S.room, inf = TW.info(room), cfg = TW.cfgOf(room);
 
@@ -488,7 +652,10 @@
     var sigPv = [JSON.stringify(room), S.mode, S.mapZoom];
     var playing = inf.id === 'video' && !fresh && box.querySelector('iframe.yt');   // 影片播放中：不要重畫，否則影片會重來
     if ((gates.pv(sigPv) || fresh) && !playing) renderStage(box, fresh);
+    else if (playing) TW.syncTimer(box, room.state && room.state.timer);
     applyVideoCmd();
+    updateRemoteUI();
+    if (gates.timer([room.state && room.state.timer, S.readonly])) renderTimer();
 
     if (S.mode !== 'control') return;
 
@@ -673,14 +840,15 @@
       if (S.dragged) { S.dragged = false; return; }
       S.mapZoom = !S.mapZoom; gates.pv({ r: Math.random() }); renderStage(S.mode === 'proj' ? $('#fullBox') : $('#pvBox'), false); return;
     }
-    if (S.readonly && act[a] && !/^(mode|openProj|copy|logout)$/.test(a)) { e.preventDefault(); toast(RO_MSG); return; }
+    if (a === 'mode' && arg === 'proj' && S.remote) { toast('📲 平板遙控時，投影由電腦負責。'); return; }
+    if (S.readonly && act[a] && !/^(mode|openProj|copy|logout)$/.test(a)) { e.preventDefault(); toast(roMsg()); return; }
     if (act[a]) { e.preventDefault(); act[a](arg); }
   });
   document.addEventListener('change', function (e) {
     var id = e.target.id;
     if (!S.room) return;
     if (S.readonly && /^set/.test(id)) {   // 只能檢視：把設定畫面還原
-      toast(RO_MSG); gates.settings({ r: Math.random() }); renderAll(false); return;
+      toast(roMsg()); gates.settings({ r: Math.random() }); renderAll(false); return;
     }
     if (id === 'setGroups') {
       if (TW.info(S.room).f > IDX.draw0) return;
@@ -689,6 +857,9 @@
     else if (id === 'setSound') { write({ 'cfg/sound': e.target.checked }); TW.sound.on = e.target.checked; TW.sound.play('ok'); }
     else if (id === 'setSub') write({ 'cfg/subMode': e.target.value });
     else if (id === 'setFixed') write({ 'cfg/subFixed': Math.max(0, Math.round(Number(e.target.value) || 0)) });
+  });
+  document.addEventListener('keydown', function (e) {   // 自訂秒數框：按 Enter 直接開始
+    if (e.target && e.target.id === 'tmrIn' && e.key === 'Enter') { e.preventDefault(); if (S.readonly) toast(roMsg()); else act.tmrCustom(); }
   });
   document.addEventListener('focusout', function () {
     setTimeout(function () { if (S.pending && S.room) { gates.groups({ r: Math.random() }); gates.settings({ r: Math.random() }); renderAll(false); } }, 50);

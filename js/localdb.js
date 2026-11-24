@@ -86,15 +86,27 @@
   /* ---- 模擬 database.rules.json（只在 mock 模式開啟）---- */
   function rulesAllow(tree, segs, newVal, uid) {
     if (!uid) return false;
+    // 📲 平板遙控密鑰：keys/{房間}（只有開房者能寫）；keys/{房間}/ok/{密鑰}/{自己的uid}＝true（密鑰要正確）
+    if (segs[0] === 'keys' && segs.length >= 2) {
+      var kOwner = getAt(tree, ['rooms', segs[1], 'teacherUid']);
+      if (kOwner && kOwner === uid) return true;
+      if (segs[2] === 'ok' && segs.length === 5) {
+        var curKey = getAt(tree, ['keys', segs[1], 'key']);
+        return segs[4] === uid && newVal === true && !!curKey && segs[3] === curKey;
+      }
+      return false;
+    }
     if (segs[0] !== 'rooms' || segs.length < 2) return false;
     var room = segs[1];
     var oldRoom = getAt(tree, ['rooms', room]);
     var after = setAt(clone(tree), segs, clone(newVal));
     var newRoom = getAt(after, ['rooms', room]);
     var stale = oldRoom && typeof oldRoom.createdAt === 'number' && oldRoom.createdAt < Date.now() - 43200000;
+    var key = getAt(tree, ['keys', room, 'key']);
+    var ctrlOK = !!oldRoom && !!key && getAt(tree, ['keys', room, 'ok', key, uid]) === true;
     var teacherOK = (!oldRoom && newRoom && newRoom.teacherUid === uid) ||
       (oldRoom && oldRoom.teacherUid === uid) ||
-      (stale && newRoom && newRoom.teacherUid === uid);
+      (stale && newRoom && newRoom.teacherUid === uid) || ctrlOK;
     if (teacherOK) return /^[0-9]{4}$/.test(room) || room === 'local';
     if (!oldRoom || !oldRoom.teacherUid) return false;
     var sub = segs[2], g = segs[3];

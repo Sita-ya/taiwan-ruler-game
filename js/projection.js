@@ -419,8 +419,11 @@
     env = env || { kind: 'online' };
     var inf = TW.info(room);
     var fn = P[inf.id] || function () { return title(inf.frame.title); };
-    var h = '<div class="pj pj-' + inf.id + '">' + fn(room, inf, env) + '</div>';
+    var timer = room && room.state && room.state.timer;
+    var h = '<div class="pj pj-' + inf.id + (timer ? ' tmr-on' : '') + '">' + fn(room, inf, env) + '</div>';
     if (inf.paused) h += '<div class="pj-paused">⏸ 全班暫停中</div>';
+    // ⏱ 倒數小碼表（右上角）＋「時間到」蓋板；暫停畫面也照樣顯示
+    h += '<div class="tmr-holder" data-sig="' + esc(JSON.stringify(timer || null)) + '">' + TW.timerHTML(timer) + '</div>';
     return h;
   };
 })();

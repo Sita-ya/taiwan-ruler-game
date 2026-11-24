@@ -204,6 +204,9 @@
     var inf = TW.info(S.room);
     $('#pause').hidden = !inf.paused;
     updateFsOverlay();
+    // ⏱ 倒數小碼表：只有計時器改變才重新放入
+    var tm = S.room.state && S.room.state.timer, tsig = JSON.stringify(tm || null);
+    if (S.tmrSig !== tsig) { S.tmrSig = tsig; $('#tmrBox').innerHTML = TW.timerHTML(tm); }
     if (!force && !gate(sigOf())) return;
     if (force) gate(sigOf());
     var fresh = S.lastF !== null && S.lastF !== inf.f;

@@ -326,6 +326,8 @@
         return firebase.auth().signInAnonymously();
       })
       .then(function () {
+        // 各台裝置的時鐘可能差好幾秒：用 Firebase 伺服器時間校正（倒數計時用）
+        firebase.database().ref('.info/serverTimeOffset').on('value', function (s) { TW._offset = s.val() || 0; });
         return { db: firebase.database(), uid: firebase.auth().currentUser.uid, kind: 'online' };
       })
       .catch(function (e) {
@@ -425,6 +427,55 @@
       document.addEventListener('webkitfullscreenchange', cb);
     }
   };
+
+  /* ---------------- ⏱ 倒數計時器（資料只存一筆：state/timer = { end, sec }） ---------------- */
+  /** 校正過的「現在時間」：開始計時、算剩幾秒一律用它，不要直接用 Date.now() */
+  TW.now = function () { return Date.now() + (TW._offset || 0); };
+  /** 按鈕文字：20 → 「20 秒」、120 → 「2 分」、90 → 「1 分 30 秒」 */
+  TW.secLabel = function (s) {
+    s = Math.round(Number(s) || 0);
+    if (s < 60) return s + ' 秒';
+    return Math.floor(s / 60) + ' 分' + (s % 60 ? ' ' + (s % 60) + ' 秒' : '');
+  };
+  function clock(ms) { var s = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
+  /** 小碼表 HTML。inline = true：教師面板用（只有小碼表，不蓋「時間到」） */
+  TW.timerHTML = function (t, inline) {
+    if (!t || !t.end) return '';
+    // 一畫出來就帶著正確狀態，畫面重畫時小碼表才不會閃一下
+    var left = Number(t.end) - TW.now(), sec = Number(t.sec) || 60, upMs = (Number(C.timeUpSeconds) || 5) * 1000;
+    var st = left > 0 ? ' run' + (left <= 10000 ? ' warn' : '') : (left > -upMs ? ' up' : '');
+    var w = Math.max(0, Math.min(100, left / (sec * 1000) * 100));
+    return '<div class="tmr' + (inline ? ' inline' : '') + st + '" data-end="' + Number(t.end) + '" data-sec="' + sec + '">' +
+      '<div class="tmr-badge"><span>⏱</span><b class="tmr-t">' + clock(left) + '</b><i class="tmr-bar"><em style="width:' + w + '%"></em></i></div>' +
+      (inline ? '' : '<div class="tmr-up"><div><div class="tmr-emoji">⏰</div><h1>時間到！</h1><p>👀 眼睛看老師</p></div></div>') + '</div>';
+  };
+  TW.timerRunning = function (t) { return !!(t && t.end && Number(t.end) > TW.now()); };
+  /** 把 container 裡的 .tmr-holder 換成目前的計時器（只有計時器改變時才換） */
+  TW.syncTimer = function (container, t) {
+    var h = container && container.querySelector('.tmr-holder');
+    if (!h) return;
+    var sig = JSON.stringify(t || null);
+    if (h.getAttribute('data-sig') === sig) return;
+    h.setAttribute('data-sig', sig);
+    h.innerHTML = TW.timerHTML(t);
+  };
+  // 每 0.25 秒更新畫面上所有小碼表的文字與進度條（不用整個畫面重畫）
+  setInterval(function () {
+    var list = document.querySelectorAll('.tmr[data-end]');
+    if (!list.length) return;
+    var upMs = (Number(C.timeUpSeconds) || 5) * 1000, now = TW.now();
+    Array.prototype.forEach.call(list, function (el) {
+      var left = Number(el.getAttribute('data-end')) - now, sec = Number(el.getAttribute('data-sec')) || 60;
+      var st = left > 0 ? 'run' : (left > -upMs ? 'up' : 'off');
+      el.classList.toggle('run', st === 'run');
+      el.classList.toggle('up', st === 'up');
+      el.classList.toggle('warn', st === 'run' && left <= 10000);
+      if (st === 'run') {
+        var t = el.querySelector('.tmr-t'); if (t) t.textContent = clock(left);
+        var b = el.querySelector('.tmr-bar em'); if (b) b.style.width = Math.max(0, Math.min(100, left / (sec * 1000) * 100)) + '%';
+      }
+    });
+  }, 250);
 
   /* ---------------- 教師口白查詢 ---------------- */
   /** 回傳 { goal, ref, time, lines:[{type,text}] }。先找步驟代號，再找分組名稱；也相容舊格式 [{say},{tip}] */

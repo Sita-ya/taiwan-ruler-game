@@ -25,7 +25,7 @@
     if (vidN === undefined) vidN = n;
     else if (n !== vidN) { vidN = n; if (v) TW.yt(box, v.cmd); }
     // 影片播放中：不要重畫，否則影片會從頭開始
-    if (inf.id === 'video' && !fresh && !force && box.querySelector('iframe.yt')) { lastF = inf.f; return; }
+    if (inf.id === 'video' && !fresh && !force && box.querySelector('iframe.yt')) { TW.syncTimer(box, room.state && room.state.timer); lastF = inf.f; return; }
     if (!gate([JSON.stringify(room), mapZoom]) && !force && !fresh) return;
     box.innerHTML = '<div class="stage ' + (fresh ? 'anim' : 'noanim') + '">' + TW.projection(room, TW.projEnv(local ? 'local' : 'online', code, mapZoom)) + '</div>';
     fit();
