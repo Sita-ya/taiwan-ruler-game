@@ -518,10 +518,22 @@
 
   function renderNotes(inf) {
     var h = '<h3>🗒 教師口白提示 <small>（' + esc(inf.frame.step) + '・' + esc(inf.frame.title) + '）</small></h3>';
-    TW.notesFor(inf.frame).forEach(function (n) {
-      if (n.say) h += '<p class="note say"><b>💬 可以說</b>' + esc(n.say) + '</p>';
-      if (n.tip) h += '<p class="note tip"><b>📌 提醒</b>' + esc(n.tip) + '</p>';
+    var LG = C.lessonGoals;
+    if (inf.id === 'lobby' && LG) {     // 大廳時先看整節課的教學目標
+      h += '<details class="lesson-goals" open><summary>📚 ' + esc(LG.title) + '</summary><ul>' +
+        (LG.goals || []).map(function (g) { return '<li>' + esc(g) + '</li>'; }).join('') + '</ul>' +
+        (LG.timeline ? '<div class="lg-time">⏱ ' + esc(LG.timeline) + '</div>' : '') + '</details>';
+    }
+    var N = TW.notesFor(inf.frame);
+    if (N.goal) {
+      h += '<div class="note-goal"><b>🎯 這一步的目標</b>' + esc(N.goal) +
+        ((N.ref || N.time) ? '<div class="ng-meta">' + (N.ref ? '<span class="ng-ref">' + esc(N.ref) + '</span>' : '') + (N.time ? '<span class="ng-time">⏱ ' + esc(N.time) + '</span>' : '') + '</div>' : '') + '</div>';
+    }
+    N.lines.forEach(function (n) {
+      var t = TW.NOTE_TYPES[n.type] || TW.NOTE_TYPES.say;
+      h += '<p class="note n-' + esc(n.type || 'say') + '"><b>' + t.icon + ' ' + esc(t.label) + '</b>' + esc(n.text) + '</p>';
     });
+    if (!N.goal && !N.lines.length) h += '<p class="note n-tip">（這一步沒有設定口白，可在 config.js 的 notes 加上）</p>';
     $('#notesPanel').innerHTML = h;
   }
 

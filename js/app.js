@@ -389,7 +389,26 @@
   };
 
   /* ---------------- 教師口白查詢 ---------------- */
-  TW.notesFor = function (frame) { return (C.notes && C.notes[frame.note]) || []; };
+  /** 回傳 { goal, ref, time, lines:[{type,text}] }。先找步驟代號，再找分組名稱；也相容舊格式 [{say},{tip}] */
+  TW.notesFor = function (frame) {
+    var n = C.notes && (C.notes[frame.id] || C.notes[frame.note]);
+    if (!n) return { lines: [] };
+    if (Array.isArray(n)) {
+      return { lines: n.map(function (o) { return o.say ? { type: 'say', text: o.say } : { type: 'tip', text: o.tip || o.text || '' }; }) };
+    }
+    return { goal: n.goal || '', ref: n.ref || '', time: n.time || '', lines: n.lines || [] };
+  };
+  TW.NOTE_TYPES = {
+    open: { icon: '🎬', label: '開場' },
+    hook: { icon: '✨', label: '引起動機' },
+    ask: { icon: '❓', label: '提問' },
+    expect: { icon: '💭', label: '預期反應' },
+    explain: { icon: '🗣', label: '說明' },
+    say: { icon: '💬', label: '可以說' },
+    next: { icon: '➡️', label: '過渡（接下一步）' },
+    close: { icon: '📌', label: '收攏（小結）' },
+    tip: { icon: '⚠️', label: '提醒（只給老師）' }
+  };
 
   /* ---------------- 簡單的偵測：訊號相同就不重畫 ---------------- */
   TW.makeGate = function () {
