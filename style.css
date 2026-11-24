@@ -345,11 +345,17 @@ body.proj-mode { overflow: hidden; }
 .ms-bar { height: 40px; background: var(--soft); border-radius: 20px; overflow: hidden; }
 .ms-bar i { display: block; height: 100%; background: var(--gold); border-radius: 20px; transition: width .4s; }
 .ms-c { font-weight: 900; text-align: right; }
+.mood-stats.has-custom .ms-row { padding: 2px 0; font-size: 34px; }
+.mood-stats.has-custom .ms-bar { height: 30px; }
+.ms-custom { list-style: none; margin: 0 0 4px 80px; padding: 0; max-height: 420px; overflow: hidden; }
+.ms-custom li { font-size: 25px; line-height: 1.35; padding: 4px 0 4px 12px; border-left: 6px solid var(--fc); margin: 4px 0; color: #333; word-break: break-all; }
+.ms-custom li b { font-size: 21px; color: #666; margin-right: 6px; }
+.mc-hide { color: #999; }
 .mood-local { font-size: 52px; text-align: center; margin-top: 90px; line-height: 1.6; font-weight: 800; }
 .marg { text-align: center; padding-top: 70px; }
 .marg-av { display: flex; gap: 30px; justify-content: center; margin-bottom: 40px; }
-.marg-t1 { font-size: 78px; font-weight: 900; line-height: 1.4; max-width: 1600px; margin: 0 auto; }
-.marg-t2 { font-size: 90px; font-weight: 900; line-height: 1.35; margin: 50px auto 0; color: var(--red); max-width: 1600px; }
+.marg-t1 { font-size: 70px; font-weight: 900; line-height: 1.45; max-width: 1780px; margin: 0 auto; }
+.marg-t2 { font-size: 90px; font-weight: 900; line-height: 1.35; margin: 50px auto 0; color: var(--red); max-width: 1780px; }
 
 /* 世界的尺 */
 .w1 { text-align: center; padding-top: 80px; }
