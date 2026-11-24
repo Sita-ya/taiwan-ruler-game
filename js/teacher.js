@@ -523,9 +523,9 @@
       var t = TW.NOTE_TYPES[n.type] || TW.NOTE_TYPES.say;
       return '<p class="note n-' + esc(n.type || 'say') + '"><b>' + t.icon + ' ' + esc(t.label) + '</b>' + esc(n.text) + '</p>';
     }
-    // ① 上課要說的話：開場 → 引起動機 → 過渡 → 說明 → 提問〔＋預期反應〕→ 收攏
+    // ① 上課要說的話：開場 → 引起動機 → 說明 → 提問〔＋預期反應〕→ 收攏 → 過渡（接到下一頁）
     //    （想換順序，改這裡的數字即可：數字越小越上面）
-    var RANK = { open: 1, hook: 2, next: 3, explain: 4, say: 4, ask: 5, close: 6 };
+    var RANK = { open: 1, hook: 2, explain: 4, say: 4, ask: 5, close: 6, next: 7 };
     var talk = [], tips = [], prev = 4;
     N.lines.forEach(function (n, i) {
       if (n.type === 'tip') { tips.push(n); return; }
