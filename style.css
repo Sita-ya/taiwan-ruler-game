@@ -469,6 +469,70 @@ body.proj-mode { overflow: hidden; }
 .vid-ctl .btn { min-height: 60px; font-size: 24px; }
 .vid-ctl .btn[data-arg="play"] { background: #7be08f; }
 
+/* ---------- 📲 平板遙控 ---------- */
+.remote-btn { font-size: 17px; min-height: 52px; padding: 6px 14px; background: #E7F5FF; }
+.remote-tag { background: #2E9E5B; color: #fff; font-weight: 900; font-size: 17px; padding: 6px 14px; border-radius: 16px; }
+.remote-banner { position: sticky; top: 0; z-index: 60; background: #FFE0E3; color: var(--red); border-bottom: 4px solid var(--red); font-size: 20px; font-weight: 900; text-align: center; padding: 12px 16px; }
+/* 平板上：投影由電腦負責，隱藏投影／首頁相關按鈕 */
+body.remote [data-act="openProj"], body.remote .tb-mid [data-arg="proj"], body.remote [data-act="logout"], body.remote [data-act="newRoom"],
+body.remote [data-act="vidOpen"], body.remote .vc-hint { display: none !important; }
+body.remote .pv-wrap { cursor: default; }
+body.remote .pv-wrap .pv-label small { display: none; }
+.vc-remote { display: none; flex: 1 0 100%; font-size: 15px; font-weight: 700; color: #b25f00; text-align: center; }
+body.remote .vid-ctl.link .vc-remote { display: block; }
+.remote-card { text-align: center; max-width: 560px; }
+.rm-qr { width: 280px; margin: 6px auto; }
+.rm-qr svg { width: 100%; height: auto; display: block; }
+.rm-url code { font-size: 13px; }
+.rm-warn { color: var(--red); font-weight: 900; }
+.rm-count { font-weight: 800; color: var(--green); }
+
+/* ---------- ⏱ 倒數計時器 ---------- */
+.tmr { display: none; }
+.tmr.run, .tmr.up { display: block; }
+.tmr .tmr-up { display: none; }
+.tmr.up .tmr-badge { display: none; }
+.tmr.up .tmr-up { display: flex; }
+.tmr-badge { display: flex; align-items: center; gap: 10px; background: var(--ink); color: #fff; font-weight: 900; border-radius: 22px; font-variant-numeric: tabular-nums; pointer-events: none; }
+.tmr-bar { display: block; height: 10px; background: rgba(255,255,255,.25); border-radius: 6px; overflow: hidden; }
+.tmr-bar em { display: block; height: 100%; width: 100%; background: var(--gold); border-radius: 6px; transition: width .3s linear; }
+.tmr.warn .tmr-badge { background: var(--red); animation: tmrPulse .8s ease-in-out infinite; }
+.noanim .tmr.warn .tmr-badge, .tmr-box .tmr.warn .tmr-badge { animation: tmrPulse .8s ease-in-out infinite !important; }
+@keyframes tmrPulse { 50% { transform: scale(1.08); } }
+.tmr-up { align-items: center; justify-content: center; text-align: center; background: #1d3557; color: #fff; }
+.tmr-up h1 { margin: 0; font-weight: 900; }
+/* 投影舞台裡（1920×1080） */
+.stage .tmr-badge { position: absolute; top: 14px; right: 18px; z-index: 60; font-size: 44px; padding: 4px 22px; }
+.stage .tmr-bar { width: 120px; }
+.stage .tmr-up { position: absolute; inset: 0; z-index: 70; }
+.stage .tmr-emoji { font-size: 200px; line-height: 1.1; }
+.stage .tmr-up h1 { font-size: 150px; }
+.stage .tmr-up p { font-size: 80px; font-weight: 800; margin: 10px 0 0; }
+.pj-paused { right: auto; left: 30px; }
+/* 倒數中：讓出右上角給小碼表（只有這三頁會碰到） */
+.pj-lobby.tmr-on .pj-title.huge { margin-top: 70px; }
+.pj-rev3.tmr-on .rev-q { margin-right: 340px; }
+.pj-w3.tmr-on .w3-t { padding-right: 1000px; font-size: 40px; }
+.pj-w3.tmr-on .map-hint { right: 380px; }
+/* 學生平板：右上角（蓋在標題列的步驟編號上），學生不能點 */
+.tmr-box { pointer-events: none; }
+.tmr-box .tmr-badge { position: fixed; top: 7px; right: 10px; z-index: 9700; font-size: 26px; padding: 4px 14px; }
+.tmr-box .tmr-bar { width: 60px; height: 8px; }
+.tmr-box .tmr-up { position: fixed; inset: 0; z-index: 11000; }
+.tmr-box .tmr-emoji { font-size: 140px; line-height: 1.1; }
+.tmr-box .tmr-up h1 { font-size: 80px; }
+.tmr-box .tmr-up p { font-size: 44px; font-weight: 800; margin: 6px 0 0; }
+/* 控制台的計時面板 */
+.tmr-panel h3 { margin-bottom: 6px; }
+.tmr-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.tmr-btns .btn { flex: 1 0 auto; min-height: 52px; font-size: 19px; }
+.tmr-custom { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 18px; font-weight: 700; }
+.tmr-custom input { width: 90px; font: inherit; font-size: 22px; text-align: center; padding: 6px; border: 3px solid var(--ink); border-radius: 10px; }
+.tmr-live { margin-bottom: 8px; }
+.tmr.inline .tmr-badge { display: inline-flex; font-size: 36px; padding: 4px 20px; }
+.tmr.inline .tmr-bar { width: 110px; }
+.tmr.inline.up .tmr-badge { display: inline-flex; }
+
 /* 動畫（只有「換步驟那一次」才播，重新整理或同步更新時不會一直閃） */
 .noanim *, .noanim *::before, .noanim *::after { animation: none !important; }
 @keyframes popIn { from { transform: scale(.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }

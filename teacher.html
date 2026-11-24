@@ -26,11 +26,15 @@
       <button class="btn tab proj-win" data-act="openProj" title="另開一個視窗，拖到電子白板（螢幕「延伸」時用）">🖥 開啟投影視窗</button>
     </div>
     <div class="tb-right">
+      <span id="remoteTag" class="remote-tag" hidden>📲 平板遙控中</span>
       <span id="tbConn" class="conn"></span>
+      <button class="btn remote-btn" id="remoteBtn" data-act="remote" hidden title="用平板掃 QR code，拿著平板控制">📲 平板遙控</button>
       <button class="btn stu-fs" id="stuFsBtn" data-act="stuFs" title="讓學生平板出現「點一下進入全螢幕」">📱 平板全螢幕</button>
       <button class="btn pause-btn" id="pauseBtn" data-act="pause">⏸ 全班暫停</button>
     </div>
   </header>
+
+  <div id="remoteBanner" class="remote-banner" hidden>🔒 老師已停止平板遙控。請在電腦的控制台按「📲 平板遙控」，再掃一次新的 QR code。</div>
 
   <main id="control">
     <aside class="col-steps">
@@ -57,6 +61,7 @@
         <button class="btn nav next" id="nextBtn" data-act="next">下一步 ▶</button>
         <div class="nav-mid" id="navMid"></div>
       </div>
+      <div class="panel tmr-panel" id="timerPanel"></div>
       <div class="vid-ctl" id="vidCtl" hidden>
         <span class="vc-embed">🎬 遙控白板上的影片：</span>
         <button class="btn vc-embed" data-act="vid" data-arg="play">▶ 播放</button>
@@ -65,6 +70,7 @@
         <span class="vc-link">🎬 影片用 YouTube 超連結開啟：</span>
         <button class="btn vc-link" data-act="vidOpen">▶ 在這台電腦開啟影片</button>
         <div class="vc-link vc-hint">也可以直接在白板上點投影畫面中的「▶ 在 YouTube 開啟影片」。</div>
+        <div class="vc-link vc-remote">影片要在電腦上播放（平板按了只會在平板上播）。請到電腦按「開啟影片」，或直接點白板上投影畫面的影片縮圖。</div>
       </div>
       <div class="nav-hint">投影模式快捷鍵：→ 或 空白鍵＝下一步　← ＝上一步　P ＝全班暫停　C ＝回控制模式</div>
     </aside>

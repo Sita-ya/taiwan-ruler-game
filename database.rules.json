@@ -5,7 +5,7 @@
     "rooms": {
       "$room": {
         ".read": "auth != null",
-        ".write": "auth != null && ((!data.exists() && newData.child('teacherUid').val() === auth.uid) || (data.exists() && data.child('teacherUid').val() === auth.uid) || (data.child('createdAt').val() < now - 43200000 && newData.child('teacherUid').val() === auth.uid))",
+        ".write": "auth != null && ((!data.exists() && newData.child('teacherUid').val() === auth.uid) || (data.exists() && data.child('teacherUid').val() === auth.uid) || (data.child('createdAt').val() < now - 43200000 && newData.child('teacherUid').val() === auth.uid) || (data.exists() && root.child('keys').child($room).child('key').exists() && root.child('keys').child($room).child('ok').child(root.child('keys').child($room).child('key').val()).child(auth.uid).val() === true))",
         ".validate": "$room.matches(/^[0-9]{4}$/)",
 
         "seats": {
@@ -58,6 +58,19 @@
               "$other": {
                 ".validate": false
               }
+            }
+          }
+        }
+      }
+    },
+    "keys": {
+      "$room": {
+        ".read": "auth != null && root.child('rooms').child($room).child('teacherUid').val() === auth.uid",
+        ".write": "auth != null && root.child('rooms').child($room).child('teacherUid').val() === auth.uid",
+        "ok": {
+          "$key": {
+            "$uid": {
+              ".write": "auth != null && auth.uid === $uid && newData.val() === true && root.child('keys').child($room).child('key').exists() && $key === root.child('keys').child($room).child('key').val()"
             }
           }
         }
