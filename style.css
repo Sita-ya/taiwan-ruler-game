@@ -69,7 +69,8 @@ code { background: #fff; border: 2px solid var(--soft); border-radius: 8px; padd
 @keyframes pulse { 50% { box-shadow: 0 0 0 10px rgba(214,40,57,.25), 0 5px 0 var(--red); } }
 
 /* 版面：左＝步驟列表｜中（最大）＝教師口白、各組狀態、設定｜右＝投影幕小預覽＋控制簡報的按鈕 */
-#control { display: grid; grid-template-columns: 250px minmax(480px, 1fr) minmax(380px, 460px); gap: 16px; padding: 16px; align-items: start; }
+/* 電腦與平板都維持三欄：左右兩欄隨螢幕寬度等比例縮小（有上下限），中間的口白欄吃掉剩下的寬度、文字自動換行 */
+#control { display: grid; grid-template-columns: clamp(150px, 17vw, 250px) minmax(0, 1fr) clamp(260px, 31vw, 460px); gap: clamp(10px, 1.2vw, 16px); padding: clamp(10px, 1.2vw, 16px); align-items: start; }
 .col-steps { background: #fff; border: 4px solid var(--ink); border-radius: 22px; padding: 12px; position: sticky; top: 96px; max-height: calc(100vh - 112px); overflow: auto; }
 .col-steps h3 { font-size: 18px; }
 .step-item { display: flex; gap: 8px; align-items: center; width: 100%; text-align: left; font: inherit; font-size: 16px; font-weight: 700; padding: 8px 10px; margin-bottom: 5px; border: 3px solid var(--soft); border-radius: 12px; background: #fff; cursor: pointer; min-height: 44px; }
@@ -526,8 +527,9 @@ body.remote .vid-ctl.link .vc-remote { display: block; }
 .tmr-panel h3 { margin-bottom: 6px; }
 .tmr-btns { display: flex; flex-wrap: wrap; gap: 8px; }
 .tmr-btns .btn { flex: 1 0 auto; min-height: 52px; font-size: 19px; }
-.tmr-custom { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 18px; font-weight: 700; }
-.tmr-custom input { width: 90px; font: inherit; font-size: 22px; text-align: center; padding: 6px; border: 3px solid var(--ink); border-radius: 10px; }
+.tmr-custom { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 10px; font-size: 18px; font-weight: 700; white-space: nowrap; }
+.tmr-custom .btn { white-space: nowrap; }
+.tmr-custom input { width: 80px; font: inherit; font-size: 22px; text-align: center; padding: 6px; border: 3px solid var(--ink); border-radius: 10px; }
 .tmr-live { margin-bottom: 8px; }
 .tmr.inline .tmr-badge { display: inline-flex; font-size: 36px; padding: 4px 20px; }
 .tmr.inline .tmr-bar { width: 110px; }
@@ -702,13 +704,26 @@ body.student input { -webkit-user-select: text; user-select: text; }
 .pause-t { font-size: 90px; font-weight: 900; }
 @keyframes look { 0%, 100% { transform: translateX(-20px); } 50% { transform: translateX(20px); } }
 
-@media (max-width: 1180px) {
-  #control { grid-template-columns: 220px minmax(0, 1fr); }
-  .col-steps { grid-row: 1 / span 2; }
-  .col-side { grid-column: 2; grid-row: 1; position: static; }
-  .col-main { grid-column: 2; grid-row: 2; }
+/* 平板寬度（橫向 iPad、Chromebook）：一樣三欄，只把字和按鈕稍微縮小 */
+.notes-main .note, .notes-main .note-goal, .gr-stat { overflow-wrap: anywhere; }
+.nav { font-size: clamp(18px, 1.8vw, 26px); }
+.nav.prev { white-space: nowrap; padding-left: 10px; padding-right: 10px; }
+@media (max-width: 1100px) {
+  #topbar { position: static; }                                  /* 上方工具列可能換成兩行：不要固定，免得蓋住左右欄 */
+  .col-steps, .col-side { top: 10px; }
+  .col-steps { max-height: calc(100vh - 20px); }
+  .step-item { font-size: 14px; padding: 6px 8px; gap: 6px; }
+  .step-item .si-n { min-width: 30px; padding: 2px 4px; }
+  .notes-main .note { font-size: 18px; }
+  .notes-main .note.n-open, .notes-main .note.n-hook, .notes-main .note.n-next { font-size: 20px; }
+  .nav { min-height: 72px; padding: 8px 10px; }
+  .nav.prev { flex-basis: 34%; white-space: nowrap; }
+  .tmr-btns .btn { font-size: 16px; min-height: 48px; padding: 4px 8px; }
+  .tmr.inline .tmr-badge { font-size: 28px; }
+  .pv-label small { display: none; }
 }
-@media (max-width: 800px) {
+/* 只有手機這麼窄的螢幕才改成一欄 */
+@media (max-width: 680px) {
   #control { grid-template-columns: 1fr; }
   .col-steps, .col-side, .col-main { grid-column: 1; grid-row: auto; }
   .col-steps { position: static; max-height: 300px; }
