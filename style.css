@@ -108,10 +108,12 @@ code { background: #fff; border: 2px solid var(--soft); border-radius: 8px; padd
 .note.n-expect { background: #F3F0FA; font-size: 16px; color: #444; }
 .note.n-next { background: #EEF0F3; border-left: 5px solid var(--blue); }
 .note.n-close { background: #FFF6E0; border-left: 5px solid var(--gold); }
-.note-goal { background: var(--ink); color: #fff; border-radius: 12px; padding: 8px 12px; margin: 6px 0 8px; font-size: 17px; line-height: 1.45; }
-.note-goal b { display: block; font-size: 13px; opacity: .8; }
+.note.n-open, .note.n-hook, .note.n-next { font-size: 19px; font-weight: 700; }
+.note-sec { font-size: 13px; font-weight: 900; color: #777; margin: 10px 0 2px; letter-spacing: 1px; }
+.note-goal { background: #F2F2F5; color: #444; border: 2px dashed #c9c9d3; border-radius: 12px; padding: 6px 12px; margin: 12px 0 6px; font-size: 15px; line-height: 1.45; }
+.note-goal b { display: block; font-size: 13px; color: #777; }
 .ng-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
-.ng-ref, .ng-time { font-size: 13px; background: rgba(255,255,255,.18); border-radius: 8px; padding: 0 8px; }
+.ng-ref, .ng-time { font-size: 12px; background: #fff; border-radius: 8px; padding: 0 8px; }
 .lesson-goals { background: #F7F3E6; border-radius: 12px; padding: 6px 12px; margin-bottom: 8px; font-size: 15px; }
 .lesson-goals summary { font-weight: 800; cursor: pointer; }
 .lesson-goals ul { margin: 6px 0; padding-left: 1.2em; }
